@@ -1,7 +1,7 @@
 # Project Blueprint
 
 ## Overview
-A simple Flutter application that demonstrates basic navigation and UI structure for user authentication.
+A simple Flutter application that demonstrates a user authentication flow (Login/Register) using Supabase for the backend.
 
 ## Style, Design, and Features
 
@@ -16,14 +16,27 @@ A simple Flutter application that demonstrates basic navigation and UI structure
     - **Register Screen (`/register`):** A form for user registration with fields for email, password, and password confirmation. It includes a primary registration button and a link back to the login screen.
 - **UI:** The interface uses Material Design 3 components. Forms are designed to be user-friendly with clear labels, icons, and responsive layout for different screen sizes.
 
-## Current Change: Add Login/Register Flow
+### v1.2 - Supabase Integration
+- **Backend:** Integrated the Supabase Flutter SDK to handle user authentication.
+- **Initialization:** Supabase client is initialized at app startup with the project URL and anon key.
+- **Authentication Logic:**
+    - The Login screen now calls `supabase.auth.signInWithPassword` to authenticate users.
+    - The Register screen now calls `supabase.auth.signUp` to create new users.
+- **User Feedback:** Implemented loading indicators during authentication requests and snackbar notifications for success or error messages.
+- **Error Handling:** Added `try-catch` blocks to gracefully handle `AuthException` and other potential errors during login or registration.
+
+## Current Change: Connect to Supabase
 
 ### Plan
-1.  **Add Dependency:** Add the `go_router` package to `pubspec.yaml` to handle navigation.
-2.  **Create Screens:**
-    - Create `lib/screens/login_screen.dart` to build the user login interface.
-    - Create `lib/screens/register_screen.dart` to build the user registration interface.
-3.  **Update `main.dart`:**
-    - Configure `GoRouter` to define the routes for `/`, `/login`, and `/register`.
-    - Convert `MaterialApp` to `MaterialApp.router` to use the new routing configuration.
-    - Replace the home page's default counter with styled "Login" and "Register" buttons that navigate to the respective screens.
+1.  **Add Dependency:** Add the `supabase_flutter` package to `pubspec.yaml`.
+2.  **Initialize Supabase:** Configure the Supabase client in `lib/main.dart` using the provided URL and anon key.
+3.  **Implement Login:**
+    - Convert `LoginScreen` to a `StatefulWidget`.
+    - Add `TextEditingController`s, a `Form`, and validation for the email and password fields.
+    - Create a `_login` method that calls `supabase.auth.signInWithPassword`.
+    - Implement a loading state and provide user feedback via `ScaffoldMessenger`.
+4.  **Implement Registration:**
+    - Convert `RegisterScreen` to a `StatefulWidget`.
+    - Add `TextEditingController`s, a `Form`, and validation, including a check for matching passwords.
+    - Create a `_register` method that calls `supabase.auth.signUp`.
+    - Implement a loading state and provide user feedback, including a message to check for a confirmation email.
