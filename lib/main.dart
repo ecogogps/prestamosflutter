@@ -2,13 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myapp/screens/home_screen.dart';
-import 'package:myapp/screens/initial_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:myapp/screens/login_screen.dart';
 import 'package:myapp/screens/register_screen.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:myapp/screens/home_screen.dart';
+import 'package:myapp/screens/initial_screen.dart';
 
-Future<void> main() async {
+final supabase = Supabase.instance.client;
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Supabase.initialize(
@@ -18,8 +20,6 @@ Future<void> main() async {
   );
   runApp(const MyApp());
 }
-
-final supabase = Supabase.instance.client;
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -31,25 +31,61 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
-        inputDecorationTheme: const InputDecorationTheme(
-          border: OutlineInputBorder(),
-          filled: true,
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            minimumSize: const Size(double.infinity, 50),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        ),
       ),
       routerConfig: _router,
     );
   }
 }
 
-// Helper class to convert a Stream to a Listenable
+final GoRouter _router = GoRouter(
+    initialLocation: '/',
+    routes: <RouteBase>[
+      GoRoute(
+        path: '/',
+        builder: (BuildContext context, GoRouterState state) {
+          return const InitialScreen();
+        },
+        routes: <RouteBase>[
+          GoRoute(
+            path: 'login',
+            builder: (BuildContext context, GoRouterState state) {
+              return const LoginScreen();
+            },
+          ),
+          GoRoute(
+            path: 'register',
+            builder: (BuildContext context, GoRouterState state) {
+              return const RegisterScreen();
+            },
+          ),
+          GoRoute(
+            path: 'home',
+            builder: (BuildContext context, GoRouterState state) {
+              return const HomeScreen();
+            },
+          ),
+        ],
+      ),
+    ],
+    redirect: (BuildContext context, GoRouterState state) {
+      final bool loggedIn = supabase.auth.currentSession != null;
+      
+      final onPublicAuthRoute = state.matchedLocation == '/' ||
+          state.matchedLocation == '/login' ||
+          state.matchedLocation == '/register';
+
+      if (loggedIn && onPublicAuthRoute) {
+        return '/home';
+      }
+      
+      if (!loggedIn && !onPublicAuthRoute) {
+        return '/login';
+      }
+      
+      return null;
+    },
+    refreshListenable: GoRouterRefreshStream(supabase.auth.onAuthStateChange));
+
 class GoRouterRefreshStream extends ChangeNotifier {
   GoRouterRefreshStream(Stream<dynamic> stream) {
     notifyListeners();
@@ -57,7 +93,6 @@ class GoRouterRefreshStream extends ChangeNotifier {
           (dynamic _) => notifyListeners(),
         );
   }
-
   late final StreamSubscription<dynamic> _subscription;
 
   @override
@@ -66,52 +101,3 @@ class GoRouterRefreshStream extends ChangeNotifier {
     super.dispose();
   }
 }
-
-final _router = GoRouter(
-  refreshListenable: GoRouterRefreshStream(supabase.auth.onAuthStateChange),
-  initialLocation: '/',
-  routes: <RouteBase>[
-    GoRoute(
-      path: '/',
-      builder: (BuildContext context, GoRouterState state) =>
-          const InitialScreen(),
-    ),
-    GoRoute(
-      path: '/login',
-      builder: (BuildContext context, GoRouterState state) =>
-          const LoginScreen(),
-    ),
-    GoRoute(
-      path: '/register',
-      builder: (BuildContext context, GoRouterState state) =>
-          const RegisterScreen(),
-    ),
-    GoRoute(
-      path: '/home',
-      builder: (BuildContext context, GoRouterState state) =>
-          const HomeScreen(),
-    ),
-  ],
-  redirect: (BuildContext context, GoRouterState state) {
-    final session = supabase.auth.currentSession;
-    final loggedIn = session != null;
-    final onAuthRoute =
-        state.matchedLocation == '/login' || state.matchedLocation == '/register';
-    final onPublicHome = state.matchedLocation == '/';
-
-    // If the user is not logged in and is trying to access a protected route like /home,
-    // redirect them to the login page.
-    if (!loggedIn && state.matchedLocation == '/home') {
-      return '/login';
-    }
-
-    // If the user is logged in and is on a public route (like /, /login, or /register),
-    // redirect them to the authenticated home page.
-    if (loggedIn && (onAuthRoute || onPublicHome)) {
-      return '/home';
-    }
-
-    // No redirect needed.
-    return null;
-  },
-);
