@@ -1,42 +1,42 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:myapp/services/auth_service.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
-
-  bool _isAuthenticated = false;
-  bool get isAuthenticated => _isAuthenticated;
+  final GoRouter goRouter;
 
   bool _isLoading = false;
+  String? _token;
+
+  AuthProvider(this.goRouter);
+
   bool get isLoading => _isLoading;
+  bool get isAuthenticated => _token != null;
+  String? get token => _token;
 
-  void _setLoading(bool value) {
-    _isLoading = value;
+  Future<bool> login(String user, String password) async {
+    _isLoading = true;
     notifyListeners();
-  }
 
-  Future<bool> login(String email, String password) async {
-    _setLoading(true);
-    try {
-      final success = await _authService.login(email, password);
-      if (success) {
-        _isAuthenticated = true;
-        notifyListeners();
-        return true;
-      }
+    final token = await _authService.login(user, password);
+    _isLoading = false;
+
+    if (token != null) {
+      _token = token;
+      notifyListeners();
+      goRouter.go('/home');
+      return true;
+    } else {
+      _token = null;
+      notifyListeners();
       return false;
-    } catch (e) {
-      return false;
-    } finally {
-      _setLoading(false);
     }
   }
 
-  Future<void> logout() async {
-    _setLoading(true);
-    await _authService.logout();
-    _isAuthenticated = false;
-    _setLoading(false);
+  void logout() {
+    _token = null;
     notifyListeners();
+    goRouter.go('/login');
   }
 }
