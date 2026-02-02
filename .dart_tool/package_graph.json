@@ -7,7 +7,6 @@
       "name": "myapp",
       "version": "1.0.0+1",
       "dependencies": [
-        "crypto",
         "cupertino_icons",
         "flutter",
         "font_awesome_flutter",
@@ -46,10 +45,12 @@
       ]
     },
     {
-      "name": "crypto",
-      "version": "3.0.7",
+      "name": "provider",
+      "version": "6.1.5+1",
       "dependencies": [
-        "typed_data"
+        "collection",
+        "flutter",
+        "nested"
       ]
     },
     {
@@ -187,10 +188,10 @@
       ]
     },
     {
-      "name": "typed_data",
-      "version": "1.4.0",
+      "name": "nested",
+      "version": "1.0.0",
       "dependencies": [
-        "collection"
+        "flutter"
       ]
     },
     {
@@ -295,25 +296,16 @@
       ]
     },
     {
+      "name": "typed_data",
+      "version": "1.4.0",
+      "dependencies": [
+        "collection"
+      ]
+    },
+    {
       "name": "vm_service",
       "version": "15.0.2",
       "dependencies": []
-    },
-    {
-      "name": "provider",
-      "version": "6.1.5+1",
-      "dependencies": [
-        "collection",
-        "flutter",
-        "nested"
-      ]
-    },
-    {
-      "name": "nested",
-      "version": "1.0.0",
-      "dependencies": [
-        "flutter"
-      ]
     }
   ],
   "configVersion": 1

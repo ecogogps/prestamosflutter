@@ -1,18 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:myapp/providers/auth_provider.dart';
 import 'package:myapp/screens/home_screen.dart';
 import 'package:myapp/screens/login_screen.dart';
 import 'package:myapp/screens/register_screen.dart';
-import 'package:provider/provider.dart';
+import 'package:myapp/screens/initial_screen.dart';
 
 void main() {
-  runApp(
-    ChangeNotifierProvider(
-      create: (context) => AuthProvider(),
-      child: const MyApp(),
-    ),
-  );
+  runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {
@@ -23,62 +19,73 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  late final GoRouter _router;
+  late AuthProvider _authProvider;
+  late GoRouter _goRouter;
 
   @override
   void initState() {
     super.initState();
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-    _router = GoRouter(
-      refreshListenable: authProvider,
+    _authProvider = AuthProvider();
+    _goRouter = GoRouter(
       initialLocation: '/',
+      refreshListenable: _authProvider,
       routes: [
         GoRoute(
           path: '/',
-          name: 'login',
+          builder: (context, state) => const InitialScreen(),
+        ),
+        GoRoute(
+          path: '/login',
           builder: (context, state) => const LoginScreen(),
         ),
         GoRoute(
           path: '/register',
-          name: 'register',
           builder: (context, state) => const RegisterScreen(),
         ),
         GoRoute(
           path: '/home',
-          name: 'home',
           builder: (context, state) => const HomeScreen(),
         ),
       ],
-      redirect: (context, state) {
-        final bool loggedIn = authProvider.isAuthenticated;
-        final bool isLoggingIn = state.matchedLocation == '/' || state.matchedLocation == '/register';
+      redirect: (BuildContext context, GoRouterState state) {
+        final bool loggedIn = _authProvider.isLoggedIn;
+        final String location = state.matchedLocation;
 
-        // Si no está autenticado e intenta acceder a una ruta protegida, redirigir a login
-        if (!loggedIn && !isLoggingIn) {
-          return '/';
+        // Si no está logueado y no está en una página pública, redirige a login
+        if (!loggedIn &&
+            location != '/login' &&
+            location != '/register' &&
+            location != '/') {
+          return '/login';
         }
 
-        // Si está autenticado y está en una ruta de autenticación, redirigir a home
-        if (loggedIn && isLoggingIn) {
+        // Si está logueado y en una página pública, redirige a home
+        if (loggedIn &&
+            (location == '/login' ||
+                location == '/register' ||
+                location == '/')) {
           return '/home';
         }
 
-        return null; // No se necesita redirección
+        return null;
       },
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'Flutter Joseph',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-        scaffoldBackgroundColor: Colors.white,
+    return ChangeNotifierProvider.value(
+      value: _authProvider,
+      child: MaterialApp.router(
+        title: 'Flutter Joseph',
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+          fontFamily: 'Poppins',
+          scaffoldBackgroundColor: Colors.white,
+        ),
+        routerConfig: _goRouter,
+        debugShowCheckedModeBanner: false,
       ),
-      routerConfig: _router,
     );
   }
 }

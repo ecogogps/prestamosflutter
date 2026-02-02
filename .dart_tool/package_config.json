@@ -32,12 +32,6 @@
       "languageVersion": "3.4"
     },
     {
-      "name": "crypto",
-      "rootUri": "file:///home/user/.pub-cache/hosted/pub.dev/crypto-3.0.7",
-      "packageUri": "lib/",
-      "languageVersion": "3.4"
-    },
-    {
       "name": "cupertino_icons",
       "rootUri": "file:///home/user/.pub-cache/hosted/pub.dev/cupertino_icons-1.0.8",
       "packageUri": "lib/",
@@ -51,7 +45,7 @@
     },
     {
       "name": "flutter",
-      "rootUri": "file:///home/user/flutter/packages/flutter",
+      "rootUri": "file:///nix/store/vjwj46wpaxfqq6gwmnynl4hl6fmzqjsa-flutter-wrapped-3.38.3-sdk-links/packages/flutter",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
@@ -63,13 +57,13 @@
     },
     {
       "name": "flutter_test",
-      "rootUri": "file:///home/user/flutter/packages/flutter_test",
+      "rootUri": "file:///nix/store/vjwj46wpaxfqq6gwmnynl4hl6fmzqjsa-flutter-wrapped-3.38.3-sdk-links/packages/flutter_test",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
     {
       "name": "flutter_web_plugins",
-      "rootUri": "file:///home/user/flutter/packages/flutter_web_plugins",
+      "rootUri": "file:///nix/store/vjwj46wpaxfqq6gwmnynl4hl6fmzqjsa-flutter-wrapped-3.38.3-sdk-links/packages/flutter_web_plugins",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
@@ -165,7 +159,7 @@
     },
     {
       "name": "sky_engine",
-      "rootUri": "file:///home/user/flutter/bin/cache/pkg/sky_engine",
+      "rootUri": "file:///nix/store/vjwj46wpaxfqq6gwmnynl4hl6fmzqjsa-flutter-wrapped-3.38.3-sdk-links/bin/cache/pkg/sky_engine",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
@@ -237,8 +231,8 @@
     }
   ],
   "generator": "pub",
-  "generatorVersion": "3.10.7",
-  "flutterRoot": "file:///home/user/flutter",
-  "flutterVersion": "3.38.7",
+  "generatorVersion": "3.10.1",
+  "flutterRoot": "file:///nix/store/vjwj46wpaxfqq6gwmnynl4hl6fmzqjsa-flutter-wrapped-3.38.3-sdk-links",
+  "flutterVersion": "3.38.3",
   "pubCache": "file:///home/user/.pub-cache"
 }
