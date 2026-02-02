@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:myapp/main.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:myapp/providers/auth_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,92 +11,65 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _descriptionController = TextEditingController();
-  String? _locationA;
-  String? _locationB;
+  String? _ubicacionA;
+  String? _ubicacionB;
+  final _descripcionController = TextEditingController();
   bool _isLoading = false;
 
   final List<String> _locations = ['punto a', 'punto b'];
 
   Future<void> _submitRequest() async {
     if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
+      setState(() {
+        _isLoading = true;
+      });
 
-      final user = supabase.auth.currentUser;
-      if (user == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('You must be logged in to submit a request.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        setState(() => _isLoading = false);
-        return;
-      }
-
-      try {
-        await supabase.from('solicitudes').insert({
-          'user_id': user.id,
-          'ubicacion_a': _locationA,
-          'ubicacion_b': _locationB,
-          'descripcion': _descriptionController.text,
-        });
-
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Request submitted successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        _formKey.currentState!.reset();
-        _descriptionController.clear();
-        setState(() {
-          _locationA = null;
-          _locationB = null;
-        });
-      } on PostgrestException catch (error) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${error.message}'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('An unexpected error occurred.'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      } finally {
-        if (mounted) {
-          setState(() => _isLoading = false);
-        }
-      }
-    }
-  }
-
-  Future<void> _signOut() async {
-    try {
-      await supabase.auth.signOut();
-      // The router's redirect logic will handle navigation automatically.
-    } catch (e) {
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Error signing out.'),
-          backgroundColor: Theme.of(context).colorScheme.error,
+        const SnackBar(
+          content: Text(
+              'Funcionalidad no implementada. Se necesita un endpoint en el backend.'),
+          backgroundColor: Colors.amber,
         ),
       );
+
+      // TODO: Implementar la llamada al backend de Laravel para guardar la solicitud.
+      // final success = await someApiService.createRequest(
+      //   ubicacionA: _ubicacionA!,
+      //   ubicacionB: _ubicacionB!,
+      //   descripcion: _descripcionController.text,
+      // );
+      
+      // if (success) {
+      //   ScaffoldMessenger.of(context).showSnackBar(
+      //     const SnackBar(
+      //       content: Text('Solicitud creada con éxito'),
+      //       backgroundColor: Colors.green,
+      //     ),
+      //   );
+      //   _formKey.currentState!.reset();
+      //   _descripcionController.clear();
+      //   setState(() {
+      //     _ubicacionA = null;
+      //     _ubicacionB = null;
+      //   });
+      // } else {
+      //   ScaffoldMessenger.of(context).showSnackBar(
+      //     const SnackBar(
+      //       content: Text('Error al crear la solicitud'),
+      //       backgroundColor: Colors.red,
+      //     ),
+      //   );
+      // }
+
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
   @override
   void dispose() {
-    _descriptionController.dispose();
+    _descripcionController.dispose();
     super.dispose();
   }
 
@@ -104,77 +77,78 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Create Request'),
+        title: const Text('Crear Solicitud'),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: _signOut,
-            tooltip: 'Sign Out',
+            onPressed: () {
+              Provider.of<AuthProvider>(context, listen: false).logout();
+            },
           ),
         ],
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.all(16.0),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  'Submit a New Request',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-                const SizedBox(height: 24),
                 DropdownButtonFormField<String>(
-                  value: _locationA,
-                  decoration: const InputDecoration(
-                    labelText: 'Ubicación A',
-                    prefixIcon: Icon(Icons.location_on_outlined),
-                  ),
-                  items: _locations
-                      .map((loc) => DropdownMenuItem(value: loc, child: Text(loc)))
-                      .toList(),
-                  onChanged: (value) => setState(() => _locationA = value),
+                  value: _ubicacionA,
+                  decoration:
+                      const InputDecoration(labelText: 'Ubicación A'),
+                  items: _locations.map((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                  onChanged: (newValue) {
+                    setState(() {
+                      _ubicacionA = newValue;
+                    });
+                  },
                   validator: (value) =>
-                      value == null ? 'Please select a location' : null,
+                      value == null ? 'Por favor, seleccione una ubicación' : null,
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: _locationB,
-                  decoration: const InputDecoration(
-                    labelText: 'Ubicación B',
-                    prefixIcon: Icon(Icons.location_on_outlined),
-                  ),
-                  items: _locations
-                      .map((loc) => DropdownMenuItem(value: loc, child: Text(loc)))
-                      .toList(),
-                  onChanged: (value) => setState(() => _locationB = value),
+                  value: _ubicacionB,
+                  decoration:
+                      const InputDecoration(labelText: 'Ubicación B'),
+                  items: _locations.map((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                  onChanged: (newValue) {
+                    setState(() {
+                      _ubicacionB = newValue;
+                    });
+                  },
                   validator: (value) =>
-                      value == null ? 'Please select a location' : null,
+                      value == null ? 'Por favor, seleccione una ubicación' : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
-                  controller: _descriptionController,
+                  controller: _descripcionController,
                   decoration: const InputDecoration(
-                    labelText: 'Description',
-                    alignLabelWithHint: true,
-                    prefixIcon: Icon(Icons.description_outlined),
+                    labelText: 'Descripción',
+                    border: OutlineInputBorder(),
                   ),
                   maxLines: 5,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter a description';
-                    }
-                    return null;
-                  },
+                  validator: (value) =>
+                      value == null || value.isEmpty ? 'Por favor, ingrese una descripción' : null,
                 ),
                 const SizedBox(height: 24),
                 _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : ElevatedButton(
                         onPressed: _submitRequest,
-                        child: const Text('Submit Request'),
+                        child: const Text('Enviar Solicitud'),
                       ),
               ],
             ),

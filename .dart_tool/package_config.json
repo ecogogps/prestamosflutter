@@ -140,6 +140,12 @@
       "languageVersion": "3.8"
     },
     {
+      "name": "font_awesome_flutter",
+      "rootUri": "file:///home/user/.pub-cache/hosted/pub.dev/font_awesome_flutter-10.12.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.9"
+    },
+    {
       "name": "functions_client",
       "rootUri": "file:///home/user/.pub-cache/hosted/pub.dev/functions_client-2.5.0",
       "packageUri": "lib/",
