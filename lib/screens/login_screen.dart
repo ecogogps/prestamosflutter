@@ -1,8 +1,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:go_router/go_router.dart';
 import '../core/app_colors.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -17,35 +17,26 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
 
   Future<void> _sendOtp() async {
-    final phone = _phoneController.text.trim();
-    if (phone.length != 10) {
+    if (_phoneController.text.length < 9) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ingresa un número de 10 dígitos')),
+        const SnackBar(content: Text('Por favor, ingresa los 9 dígitos del número')),
       );
       return;
     }
 
     setState(() => _isLoading = true);
-
     try {
-      final fullPhone = '+52$phone';
+      final phone = '+52${_phoneController.text}';
       await Supabase.instance.client.auth.signInWithOtp(
-        phone: fullPhone,
+        phone: phone,
       );
-
       if (mounted) {
-        context.push('/otp?phone=${Uri.encodeComponent(fullPhone)}');
-      }
-    } on AuthException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message), backgroundColor: Colors.red),
-        );
+        context.push('/otp?phone=$phone');
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error al enviar el código'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Error: ${e.toString()}')),
         );
       }
     } finally {
@@ -59,67 +50,73 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(32.0),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const SizedBox(height: 60),
               Image.network(
                 'https://i.postimg.cc/tTDNDSfZ/MONEYBIC-SIN-FONDO.png',
-                height: 120,
+                height: 100,
               ),
               const SizedBox(height: 40),
               const Text(
                 'Bienvenido a MoneyBic',
                 style: TextStyle(
-                  color: AppColors.text,
-                  fontSize: 24,
+                  color: Colors.white,
+                  fontSize: 28,
                   fontWeight: FontWeight.bold,
                 ),
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               Text(
-                'Ingresa tu número de celular (México)',
+                'Ingresa tu número de celular para continuar',
                 style: TextStyle(
-                  color: AppColors.text.withOpacity(0.7),
+                  color: Colors.white.withOpacity(0.7),
                   fontSize: 16,
                 ),
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 40),
-              TextField(
-                controller: _phoneController,
-                keyboardType: TextInputType.number,
-                style: const TextStyle(color: AppColors.text),
-                maxLength: 10,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(10),
-                ],
-                decoration: InputDecoration(
-                  hintText: 'Número a 10 dígitos',
-                  hintStyle: TextStyle(color: AppColors.text.withOpacity(0.3)),
-                  prefixIcon: const Padding(
-                    padding: EdgeInsets.all(12.0),
-                    child: Text(
-                      '+52 ',
-                      style: TextStyle(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+              const SizedBox(height: 48),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2C3136),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      '+52',
+                      style: TextStyle(color: Colors.white, fontSize: 18),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _phoneController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(9),
+                      ],
+                      style: const TextStyle(color: Colors.white, fontSize: 18),
+                      decoration: InputDecoration(
+                        hintText: 'Número de celular',
+                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                        filled: true,
+                        fillColor: const Color(0xFF2C3136),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.all(16),
                       ),
                     ),
                   ),
-                  prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-                  filled: true,
-                  fillColor: const Color(0xFF2C3136),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  counterStyle: const TextStyle(color: AppColors.text),
-                ),
+                ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
                 height: 56,
@@ -127,20 +124,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   onPressed: _isLoading ? null : _sendOtp,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.black,
+                    foregroundColor: AppColors.background,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    elevation: 4,
+                    disabledBackgroundColor: AppColors.primary.withOpacity(0.3),
                   ),
                   child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.black)
+                      ? const CircularProgressIndicator(color: AppColors.background)
                       : const Text(
-                          'Enviar Código',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          'CONTINUAR',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                 ),
               ),
