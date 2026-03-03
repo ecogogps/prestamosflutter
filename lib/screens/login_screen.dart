@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../core/app_colors.dart';
+import 'package:myapp/core/app_colors.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,28 +15,27 @@ class _LoginScreenState extends State<LoginScreen> {
   final _phoneController = TextEditingController();
   bool _isLoading = false;
 
-  Future<void> _handleLogin() async {
-    final phone = _phoneController.text.trim();
-    if (phone.isEmpty || phone.length < 9) {
+  Future<void> _sendOtp() async {
+    if (_phoneController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, ingresa un número válido.')),
+        const SnackBar(content: Text('Ingresa tu número de celular')),
       );
       return;
     }
 
     setState(() => _isLoading = true);
-
     try {
-      // Prefijo Ecuador +593
-      final fullPhone = '+593$phone';
-      
+      final phone = _phoneController.text.trim();
+      // Formatear número para Ecuador (+593)
+      final fullPhone = phone.startsWith('+') ? phone : '+593$phone';
+
       await Supabase.instance.client.auth.signInWithOtp(
         phone: fullPhone,
       );
 
       if (mounted) {
-        // Redirigir a la pantalla de OTP pasando el número
-        context.push('/otp', extra: fullPhone);
+        // Navegar a OTP pasando el teléfono como query parameter
+        context.push('/otp?phone=${Uri.encodeComponent(fullPhone)}');
       }
     } on AuthException catch (e) {
       if (mounted) {
@@ -47,7 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error inesperado. Inténtalo de nuevo.')),
+          const SnackBar(content: Text('Error inesperado'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -58,78 +57,62 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(32.0),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 30),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const SizedBox(height: 60),
               Image.network(
                 'https://i.postimg.cc/tTDNDSfZ/MONEYBIC-SIN-FONDO.png',
-                height: 120,
+                height: 100,
+                errorBuilder: (context, error, stackTrace) => const Icon(Icons.account_balance_wallet, size: 80, color: AppColors.primary),
               ),
               const SizedBox(height: 40),
               const Text(
                 'Bienvenido a MoneyBic',
-                style: TextStyle(
-                  color: AppColors.text,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Ingresa tu número de Ecuador',
-                style: TextStyle(
-                  color: AppColors.text.withOpacity(0.7),
-                  fontSize: 16,
-                ),
+              const SizedBox(height: 10),
+              const Text(
+                'Ingresa tu número de celular para continuar',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white70, fontSize: 16),
               ),
-              const SizedBox(height: 48),
+              const SizedBox(height: 40),
               TextField(
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
-                style: const TextStyle(color: AppColors.text),
+                style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
+                  hintText: 'Número de celular (Ecuador)',
+                  hintStyle: const TextStyle(color: Colors.white38),
+                  prefixIcon: const Icon(Icons.phone, color: AppColors.primary),
                   prefixText: '+593 ',
                   prefixStyle: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
-                  labelText: 'Número de Celular',
-                  labelStyle: const TextStyle(color: AppColors.text),
-                  hintText: '991234567',
-                  hintStyle: TextStyle(color: AppColors.text.withOpacity(0.3)),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.text.withOpacity(0.1)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.primary),
-                  ),
                   filled: true,
-                  fillColor: Colors.white.withOpacity(0.05),
+                  fillColor: const Color(0xFF2C3136),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 30),
               SizedBox(
                 width: double.infinity,
-                height: 56,
+                height: 55,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _handleLogin,
+                  onPressed: _isLoading ? null : _sendOtp,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.black)
+                      ? const CircularProgressIndicator(color: AppColors.background)
                       : const Text(
-                          'Enviar Código SMS',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          'ENVIAR CÓDIGO',
+                          style: TextStyle(color: AppColors.background, fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                 ),
               ),
