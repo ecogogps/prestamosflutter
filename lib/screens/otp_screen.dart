@@ -1,7 +1,9 @@
 
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:myapp/core/app_colors.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import '../core/app_colors.dart';
 
 class OtpScreen extends StatefulWidget {
   final String phoneNumber;
@@ -12,73 +14,88 @@ class OtpScreen extends StatefulWidget {
 }
 
 class _OtpScreenState extends State<OtpScreen> {
-  final _otpController = TextEditingController();
+  final TextEditingController _otpController = TextEditingController();
   bool _isLoading = false;
 
-  Future<void> _verifyOtp() async {
-    if (_otpController.text.length < 6) return;
+  Future<void> _verify() async {
+    if (_otpController.text.length != 6) return;
 
     setState(() => _isLoading = true);
-    try {
-      await Supabase.instance.client.auth.verifyOTP(
-        type: OtpType.sms,
-        phone: widget.phoneNumber,
-        token: _otpController.text,
-      );
-      // La redirección ocurrirá automáticamente gracias al AuthProvider y GoRouter
-    } on AuthException catch (e) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    
+    final success = await authProvider.verifyOtp(widget.phoneNumber, _otpController.text);
+
+    if (!success && mounted) {
+      setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.message}'), backgroundColor: Colors.red),
+        const SnackBar(content: Text('Código incorrecto. Verifica e intenta de nuevo.')),
       );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error inesperado'), backgroundColor: Colors.red),
-      );
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
+    // Si tiene éxito, el AuthProvider notificará y GoRouter redirigirá automáticamente
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.text),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.symmetric(horizontal: 30),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            const SizedBox(height: 20),
             const Text(
               'Verificación',
-              style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.text),
+              style: TextStyle(color: AppColors.text, fontSize: 28, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Text(
-              'Ingresa el código de 6 dígitos enviado a ${widget.phoneNumber}',
-              style: const TextStyle(color: Colors.white70),
+              'Código enviado a ${widget.phoneNumber}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white70, fontSize: 16),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 40),
             TextField(
               controller: _otpController,
               keyboardType: TextInputType.number,
-              maxLength: 6,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 24, letterSpacing: 8, color: AppColors.text),
-              decoration: const InputDecoration(
+              maxLength: 6,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              style: const TextStyle(color: AppColors.primary, fontSize: 32, letterSpacing: 10, fontWeight: FontWeight.bold),
+              decoration: InputDecoration(
+                counterText: "",
                 hintText: '000000',
-                counterText: '',
+                hintStyle: TextStyle(color: Colors.white.withOpacity(0.1)),
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.05),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
               ),
               onChanged: (value) {
-                if (value.length == 6) _verifyOtp();
+                if (value.length == 6) _verify();
               },
             ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _isLoading ? null : _verifyOtp,
-              style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
-              child: _isLoading 
-                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Text('VERIFICAR CÓDIGO'),
+            const SizedBox(height: 40),
+            SizedBox(
+              width: double.infinity,
+              height: 55,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _verify,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: _isLoading 
+                  ? const CircularProgressIndicator(color: Colors.black)
+                  : const Text('Verificar Código', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
             ),
           ],
         ),
