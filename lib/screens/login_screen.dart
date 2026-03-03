@@ -1,8 +1,10 @@
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../core/app_colors.dart';
+import 'package:myapp/core/app_colors.dart';
+import 'package:myapp/providers/auth_provider.dart';
+import 'package:provider/provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,34 +14,31 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _phoneController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   bool _isLoading = false;
 
-  Future<void> _sendOtp() async {
-    if (_phoneController.text.length != 10) {
+  Future<void> _handleLogin() async {
+    final phone = _phoneController.text.trim();
+    if (phone.length != 10) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ingresa un número de 10 dígitos')),
+        const SnackBar(content: Text('Ingresa un número válido de 10 dígitos')),
       );
       return;
     }
 
     setState(() => _isLoading = true);
-    try {
-      final phone = '+52${_phoneController.text}';
-      await Supabase.instance.client.auth.signInWithOtp(
-        phone: phone,
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    
+    final success = await authProvider.signInWithOtp('+52$phone');
+    
+    setState(() => _isLoading = false);
+
+    if (success) {
+      context.push('/otp?phone=+52$phone');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error al enviar el código. Intenta de nuevo.')),
       );
-      if (mounted) {
-        context.push('/otp?phone=${Uri.encodeComponent(phone)}');
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -54,61 +53,76 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const SizedBox(height: 60),
-              // Logo aumentado
               Image.network(
                 'https://i.postimg.cc/tTDNDSfZ/MONEYBIC-SIN-FONDO.png',
                 height: 180,
                 fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) => const Icon(
-                  Icons.account_balance_wallet,
-                  size: 100,
-                  color: AppColors.primary,
-                ),
+                errorBuilder: (context, error, stackTrace) => const Icon(Icons.account_balance_wallet, size: 100, color: AppColors.primary),
               ),
               const SizedBox(height: 40),
               const Text(
-                'Bienvenido a MoneyBic',
+                'Bienvenido a MONEYBIC',
                 style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
+                  color: AppColors.text,
+                  fontSize: 28,
                   fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
                 ),
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 10),
               const Text(
-                'Ingresa tu número para continuar',
-                style: TextStyle(color: Colors.white70, fontSize: 16),
+                'Ingresa tu número de celular',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 40),
-              TextField(
-                controller: _phoneController,
-                keyboardType: TextInputType.number,
-                maxLength: 10,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  prefixText: '+52 ',
-                  prefixStyle: const TextStyle(color: AppColors.primary, fontSize: 18),
-                  hintText: 'Número de celular',
-                  hintStyle: const TextStyle(color: Colors.white30),
-                  counterStyle: const TextStyle(color: Colors.white30),
-                  filled: true,
-                  fillColor: const Color(0xFF2C3136),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                  ),
+              const SizedBox(height: 50),
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2C3136),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    const Text(
+                      '+52',
+                      style: TextStyle(
+                        color: AppColors.text,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _phoneController,
+                        style: const TextStyle(color: AppColors.text, fontSize: 18),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(10),
+                        ],
+                        decoration: const InputDecoration(
+                          hintText: 'Número a 10 dígitos',
+                          hintStyle: TextStyle(color: Colors.white38),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(vertical: 20),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 40),
               SizedBox(
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _sendOtp,
+                  onPressed: _isLoading ? null : _handleLogin,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.black,
@@ -116,15 +130,20 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     elevation: 5,
+                    shadowColor: AppColors.primary.withOpacity(0.4),
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.black)
                       : const Text(
-                          'Enviar Código',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          'CONTINUAR',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                 ),
               ),
+              const SizedBox(height: 40),
             ],
           ),
         ),
