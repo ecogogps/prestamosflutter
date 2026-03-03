@@ -1,8 +1,8 @@
 
 import 'package:flutter/material.dart';
-import 'package:myapp/core/app_colors.dart';
-import 'package:myapp/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import '../core/app_colors.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -18,25 +18,29 @@ class HomeScreen extends StatelessWidget {
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout, color: AppColors.text),
+            icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: () => authProvider.signOut(),
           ),
         ],
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const SizedBox(height: 20),
-            Center(
-              child: Image.network(
-                'https://i.postimg.cc/tTDNDSfZ/MONEYBIC-SIN-FONDO.png',
-                height: 100, // Tamaño mediano
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) => const Icon(Icons.account_balance, size: 60, color: AppColors.primary),
+            // Logo aumentado
+            Image.network(
+              'https://i.postimg.cc/tTDNDSfZ/MONEYBIC-SIN-FONDO.png',
+              height: 180,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) => const Icon(
+                Icons.account_balance_wallet,
+                size: 80,
+                color: AppColors.primary,
               ),
             ),
-            const SizedBox(height: 50),
+            const SizedBox(height: 40),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
@@ -45,31 +49,28 @@ class HomeScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withOpacity(0.3),
                     blurRadius: 10,
-                    offset: const Offset(0, 4),
+                    offset: const Offset(0, 5),
                   ),
                 ],
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     'Monto disponible',
                     style: TextStyle(
-                      color: AppColors.text.withOpacity(0.6),
+                      color: Colors.white70,
                       fontSize: 16,
-                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   const Text(
                     '8,851.67 MXN',
                     style: TextStyle(
-                      color: AppColors.text,
+                      color: AppColors.primary,
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
                     ),
                   ),
                 ],
@@ -81,18 +82,22 @@ class HomeScreen extends StatelessWidget {
               height: 60,
               child: ElevatedButton(
                 onPressed: () {
-                  // Acción para solicitar préstamo
+                  // Lógica para solicitar préstamo
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  elevation: 4,
-                  shadowColor: AppColors.primary.withOpacity(0.4),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 5,
                 ),
                 child: const Text(
                   'Solicitar préstamo',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
