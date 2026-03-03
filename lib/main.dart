@@ -1,13 +1,13 @@
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
+import 'package:myapp/core/app_colors.dart';
 import 'package:myapp/providers/auth_provider.dart';
 import 'package:myapp/screens/login_screen.dart';
 import 'package:myapp/screens/otp_screen.dart';
 import 'package:myapp/screens/home_screen.dart';
-import 'package:myapp/core/app_colors.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,14 +17,7 @@ void main() async {
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhqc21heGh6ZHF2cnpxa3l1em1qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NDUzODIsImV4cCI6MjA4ODEyMTM4Mn0.zu0RtGdyYI7f6xWt3sxPbMME3OXhwBY1TH6EGvjkFpY',
   );
 
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-      ],
-      child: const MyApp(),
-    ),
-  );
+  runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {
@@ -35,39 +28,41 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  late final AuthProvider _authProvider;
   late final GoRouter _router;
 
   @override
   void initState() {
     super.initState();
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
+    _authProvider = AuthProvider();
+    
     _router = GoRouter(
-      refreshListenable: authProvider,
-      initialLocation: '/login',
+      refreshListenable: _authProvider,
+      initialLocation: '/',
       redirect: (context, state) {
-        final isAuthenticated = authProvider.isAuthenticated;
-        final isLoggingIn = state.matchedLocation == '/login' || state.matchedLocation == '/otp';
+        final bool loggedIn = _authProvider.isAuthenticated;
+        final bool loggingIn = state.matchedLocation == '/';
+        final bool verifyingOtp = state.matchedLocation == '/otp';
 
-        if (!isAuthenticated && !isLoggingIn) {
-          return '/login';
+        if (!loggedIn) {
+          if (!loggingIn && !verifyingOtp) return '/';
+          return null;
         }
-        if (isAuthenticated && isLoggingIn) {
-          return '/home';
-        }
+
+        if (loggingIn || verifyingOtp) return '/home';
+
         return null;
       },
       routes: [
         GoRoute(
-          path: '/login',
+          path: '/',
           builder: (context, state) => const LoginScreen(),
         ),
         GoRoute(
           path: '/otp',
           builder: (context, state) {
-            // Extraer el número de teléfono de los parámetros de consulta
-            final phone = state.uri.queryParameters['phone'] ?? '';
-            return OtpScreen(phoneNumber: phone);
+            final phoneNumber = state.uri.queryParameters['phone'] ?? '';
+            return OtpScreen(phoneNumber: phoneNumber);
           },
         ),
         GoRoute(
@@ -80,21 +75,44 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'MoneyBic',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: AppColors.background,
-        primaryColor: AppColors.primary,
-        colorScheme: ColorScheme.dark(
-          primary: AppColors.primary,
-          secondary: AppColors.primary,
-          surface: const Color(0细2C3136),
+    return ChangeNotifierProvider.value(
+      value: _authProvider,
+      child: MaterialApp.router(
+        title: 'MoneyBic',
+        debugShowCheckedModeBanner: false,
+        routerConfig: _router,
+        theme: ThemeData(
+          useMaterial3: true,
+          brightness: Brightness.dark,
+          scaffoldBackgroundColor: AppColors.background,
+          colorScheme: const ColorScheme.dark(
+            primary: AppColors.primary,
+            onPrimary: Colors.black,
+            surface: Color(0xFF2C3136),
+            onSurface: AppColors.text,
+            background: AppColors.background,
+          ),
+          elevatedButtonTheme: ElevatedButtonThemeData(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.black,
+              textStyle: const TextStyle(fontWeight: FontWeight.bold),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+          inputDecorationTheme: InputDecorationTheme(
+            filled: true,
+            fillColor: const Color(0xFF2C3136),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            hintStyle: const TextStyle(color: Colors.white54),
+          ),
         ),
-        useMaterial3: true,
       ),
-      routerConfig: _router,
     );
   }
 }
