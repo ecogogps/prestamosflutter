@@ -6,6 +6,11 @@ Aplicación móvil financiera para la gestión de solicitudes, con autenticació
 
 ## Style, Design, and Features
 
+### v1.9 - Ajustes Finales de UI y Auth
+- **Auth:** Validación estricta de 10 dígitos para números de México (+52) para asegurar compatibilidad con Twilio.
+- **Home UI:** Header minimalista con botón de logout, logo mediano y visualización de saldo destacado.
+- **Colores:** Mantenimiento de la identidad visual oscura con acentos verde lima (#8BF724).
+
 ### v1.8 - Autenticación SMS (México)
 - **Configuración:** Cambiado el prefijo regional a +52.
 - **Validación de Input:** Restringido a 10 dígitos numéricos para cumplir con el estándar de marcación móvil en México.
