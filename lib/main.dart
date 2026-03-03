@@ -1,13 +1,13 @@
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'core/app_colors.dart';
 import 'providers/auth_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/otp_screen.dart';
 import 'screens/home_screen.dart';
+import 'core/app_colors.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,11 +44,16 @@ class _MyAppState extends State<MyApp> {
       refreshListenable: authProvider,
       initialLocation: '/login',
       redirect: (context, state) {
-        final isAuthenticated = authProvider.isAuthenticated;
-        final isLoggingIn = state.matchedLocation == '/login' || state.matchedLocation == '/otp';
+        final bool loggedIn = authProvider.isAuthenticated;
+        final bool loggingIn = state.matchedLocation == '/login' || state.matchedLocation == '/otp';
 
-        if (!isAuthenticated && !isLoggingIn) return '/login';
-        if (isAuthenticated && isLoggingIn) return '/home';
+        if (!loggedIn) {
+          return loggingIn ? null : '/login';
+        }
+
+        if (loggingIn) {
+          return '/home';
+        }
 
         return null;
       },
@@ -60,7 +65,7 @@ class _MyAppState extends State<MyApp> {
         GoRoute(
           path: '/otp',
           builder: (context, state) {
-            final phoneNumber = state.extra as String? ?? '';
+            final phoneNumber = state.uri.queryParameters['phone'] ?? '';
             return OtpScreen(phoneNumber: phoneNumber);
           },
         ),
@@ -77,16 +82,13 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp.router(
       title: 'MoneyBic',
       debugShowCheckedModeBanner: false,
-      routerConfig: _router,
       theme: ThemeData(
         brightness: Brightness.dark,
-        primaryColor: AppColors.primary,
         scaffoldBackgroundColor: AppColors.background,
-        colorScheme: const ColorScheme.dark(
-          primary: AppColors.primary,
-          surface: AppColors.background,
-        ),
+        primaryColor: AppColors.primary,
+        useMaterial3: true,
       ),
+      routerConfig: _router,
     );
   }
 }
