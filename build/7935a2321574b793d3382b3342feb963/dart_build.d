@@ -1,1 +1,1 @@
- /home/user/studio/build/7935a2321574b793d3382b3342feb963/dart_build_result.json: 
+ /home/user/studio/build/7935a2321574b793d3382b3342feb963/dart_build_result.json:  /home/user/studio/.dart_tool/package_config.json /home/user/studio/pubspec.yaml /nix/store/5hy4pnf1wmiad19kw1zrmlmawf2cdrcy-flutter-wrapped-3.38.4-sdk-links/bin/cache/dart-sdk/version
