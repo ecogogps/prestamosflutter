@@ -1,12 +1,13 @@
+
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'core/app_colors.dart';
 import 'providers/auth_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/otp_screen.dart';
 import 'screens/home_screen.dart';
-import 'core/app_colors.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,7 +19,7 @@ void main() async {
 
   runApp(
     ChangeNotifierProvider(
-      create: (_) => AuthProvider(),
+      create: (context) => AuthProvider(),
       child: const MyApp(),
     ),
   );
@@ -41,19 +42,32 @@ class _MyAppState extends State<MyApp> {
 
     _router = GoRouter(
       refreshListenable: authProvider,
-      initialLocation: authProvider.isAuthenticated ? '/home' : '/login',
+      initialLocation: '/login',
       redirect: (context, state) {
-        final authenticated = authProvider.isAuthenticated;
+        final isAuthenticated = authProvider.isAuthenticated;
         final isLoggingIn = state.matchedLocation == '/login' || state.matchedLocation == '/otp';
 
-        if (!authenticated && !isLoggingIn) return '/login';
-        if (authenticated && isLoggingIn) return '/home';
+        if (!isAuthenticated && !isLoggingIn) return '/login';
+        if (isAuthenticated && isLoggingIn) return '/home';
+
         return null;
       },
       routes: [
-        GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
-        GoRoute(path: '/otp', builder: (context, state) => const OtpScreen()),
-        GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+        GoRoute(
+          path: '/login',
+          builder: (context, state) => const LoginScreen(),
+        ),
+        GoRoute(
+          path: '/otp',
+          builder: (context, state) {
+            final phoneNumber = state.extra as String? ?? '';
+            return OtpScreen(phoneNumber: phoneNumber);
+          },
+        ),
+        GoRoute(
+          path: '/home',
+          builder: (context, state) => const HomeScreen(),
+        ),
       ],
     );
   }
@@ -70,8 +84,7 @@ class _MyAppState extends State<MyApp> {
         scaffoldBackgroundColor: AppColors.background,
         colorScheme: const ColorScheme.dark(
           primary: AppColors.primary,
-          surface: AppColors.surface,
-          onSurface: AppColors.text,
+          surface: AppColors.background,
         ),
       ),
     );

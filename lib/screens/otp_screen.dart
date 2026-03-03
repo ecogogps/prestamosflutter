@@ -1,24 +1,57 @@
+
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:go_router/go_router.dart';
-import '../providers/auth_provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/app_colors.dart';
 
 class OtpScreen extends StatefulWidget {
-  const OtpScreen({super.key});
+  final String phoneNumber;
+  const OtpScreen({super.key, required this.phoneNumber});
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
 }
 
 class _OtpScreenState extends State<OtpScreen> {
-  final TextEditingController _otpController = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
+  final _otpController = TextEditingController();
+  bool _isLoading = false;
+
+  Future<void> _handleVerify() async {
+    final otp = _otpController.text.trim();
+    if (otp.length != 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor, ingresa el código de 6 dígitos.')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      await Supabase.instance.client.auth.verifyOTP(
+        type: OtpType.sms,
+        token: otp,
+        phone: widget.phoneNumber,
+      );
+      // El router detectará el cambio de sesión y llevará al usuario al Home
+    } on AuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message), backgroundColor: Colors.red),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al verificar el código.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
-
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -26,83 +59,87 @@ class _OtpScreenState extends State<OtpScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.text),
-          onPressed: () => context.pop(),
+          onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 30),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 20),
-                const Text(
-                  'Verifica tu número',
-                  style: TextStyle(color: AppColors.text, fontSize: 28, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Enviamos un SMS al +52 ${authProvider.phoneNumber}',
-                  style: const TextStyle(color: Colors.white70, fontSize: 16),
-                ),
-                const SizedBox(height: 40),
-                TextFormField(
-                  controller: _otpController,
-                  keyboardType: TextInputType.number,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppColors.text, fontSize: 24, letterSpacing: 8),
-                  decoration: InputDecoration(
-                    hintText: '000000',
-                    hintStyle: const TextStyle(color: Colors.white10),
-                    filled: true,
-                    fillColor: AppColors.surface,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'Ingresa el código';
-                    if (value.length < 6) return 'Código incompleto';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 40),
-                SizedBox(
-                  width: double.infinity,
-                  height: 55,
-                  child: ElevatedButton(
-                    onPressed: authProvider.isLoading
-                        ? null
-                        : () async {
-                            if (_formKey.currentState!.validate()) {
-                              try {
-                                await authProvider.verifyOtp(_otpController.text);
-                                if (mounted) context.go('/home');
-                              } catch (e) {
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Código inválido: $e'), backgroundColor: AppColors.error),
-                                  );
-                                }
-                              }
-                            }
-                          },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: authProvider.isLoading
-                        ? const CircularProgressIndicator(color: Colors.black)
-                        : const Text('Verificar y Entrar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              ],
+      body: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Verificación',
+              style: TextStyle(
+                color: AppColors.text,
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
+            const SizedBox(height: 12),
+            Text(
+              'Hemos enviado un código de 6 dígitos al número ${widget.phoneNumber}',
+              style: TextStyle(
+                color: AppColors.text.withOpacity(0.7),
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 48),
+            TextField(
+              controller: _otpController,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 12,
+              ),
+              decoration: InputDecoration(
+                counterText: "",
+                enabledBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: AppColors.text.withOpacity(0.2)),
+                ),
+                focusedBorder: const UnderlineInputBorder(
+                  borderSide: BorderSide(color: AppColors.primary, width: 2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 40),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _handleVerify,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.black)
+                    : const Text(
+                        'Verificar Código',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Center(
+              child: TextButton(
+                onPressed: () {
+                  // Lógica para reenviar si fuera necesario
+                  Navigator.pop(context);
+                },
+                child: const Text(
+                  '¿No recibiste el código? Volver a intentar',
+                  style: TextStyle(color: AppColors.primary),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
