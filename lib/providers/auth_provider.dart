@@ -1,28 +1,47 @@
 import 'package:flutter/material.dart';
-import 'package:myapp/services/auth_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/auth_service.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
-  String? _token;
+  bool _isLoading = false;
+  String? _phoneNumber;
 
-  bool get isAuthenticated => _token != null;
+  bool get isLoading => _isLoading;
+  String? get phoneNumber => _phoneNumber;
+  bool get isAuthenticated => Supabase.instance.client.auth.currentSession != null;
 
-  Future<bool> login(String user, String password) async {
+  void setPhoneNumber(String phone) {
+    _phoneNumber = phone;
+    notifyListeners();
+  }
+
+  Future<void> loginWithPhone(String phone) async {
+    _isLoading = true;
+    notifyListeners();
     try {
-      final token = await _authService.login(user, password);
-      if (token != null) {
-        _token = token;
-        notifyListeners();
-        return true;
-      }
-      return false;
-    } catch (e) {
-      return false;
+      await _authService.sendOtp(phone);
+      _phoneNumber = phone;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
-  void logout() {
-    _token = null;
+  Future<void> verifyOtp(String token) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _authService.verifyOtp(_phoneNumber!, token);
+      notifyListeners();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> logout() async {
+    await _authService.signOut();
     notifyListeners();
   }
 }

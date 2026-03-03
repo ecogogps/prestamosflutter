@@ -1,35 +1,33 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthService {
-  final String _baseUrl = 'https://meta.asociacionmilitaresnuevavision.com/api';
+  final SupabaseClient _supabase = Supabase.instance.client;
 
-  Future<String?> login(String user, String password) async {
-    final url = Uri.parse('$_baseUrl/login-socio');
+  // Enviar código OTP al celular
+  Future<void> sendOtp(String phoneNumber) async {
+    // Aseguramos que el número tenga el prefijo +52
+    final formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : '+52$phoneNumber';
     
-    try {
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({
-          'user': user,
-          'password': password,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
-        if (responseData.containsKey('token')) {
-          return responseData['token'];
-        }
-      }
-      return null;
-    } catch (e) {
-      // In a real app, you'd want to log this error
-      return null;
-    }
+    await _supabase.auth.signInWithOtp(
+      phone: formattedPhone,
+    );
   }
+
+  // Verificar el código OTP recibido
+  Future<AuthResponse> verifyOtp(String phoneNumber, String token) async {
+    final formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : '+52$phoneNumber';
+    
+    return await _supabase.auth.verifyOTP(
+      phone: formattedPhone,
+      token: token,
+      type: OtpType.sms,
+    );
+  }
+
+  Future<void> signOut() async {
+    await _supabase.auth.signOut();
+  }
+
+  Session? get currentSession => _supabase.auth.currentSession;
+  User? get currentUser => _supabase.auth.currentUser;
 }

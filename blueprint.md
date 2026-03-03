@@ -1,25 +1,24 @@
-
 # Project Blueprint - MoneyBic App
 
 ## Overview
-Aplicación móvil para la gestión de solicitudes de socios, integrada con un backend Laravel y diseñada con una estética moderna Dark/Lime.
+Aplicación móvil financiera para la gestión de solicitudes, con autenticación basada en SMS (México) integrada con Supabase y Vonage.
 
 ## Style, Design, and Features
 
-### v1.4 - Identidad Visual MoneyBic
-- **Colores Globales:** Implementación de paleta oficial:
-  - Fondo: `#212529` (Dark Grey)
-  - Primario/Botones: `#8BF724` (Lime Green)
-  - Texto: `#FFFFFF` (White)
-- **Logo:** Integración del logo oficial de MoneyBic en la pantalla de acceso.
-- **Tema:** Configuración de `ThemeData` oscuro unificado en `main.dart`.
-- **UI/UX:** Rediseño de componentes de entrada (TextFields) y botones con bordes redondeados y colores de alto contraste.
+### v1.5 - Autenticación SMS (México)
+- **Backend:** Migración a Supabase Auth para Phone Login.
+- **SMS Provider:** Integración sugerida con Vonage vía Supabase Dashboard.
+- **Flujo OTP:** Pantalla de entrada de número (+52 obligatorio) y pantalla de verificación de código de 6 dígitos.
+- **Seguridad:** Manejo de sesiones persistentes con Supabase SDK.
 
-### v1.3 - Autenticación Laravel (Socios)
-- **Backend:** Conexión con API Laravel en `https://meta.asociacionmilitaresnuevavision.com`.
-- **Endpoint:** `/login-socio` para validación de documentos y contraseñas.
-- **Seguridad:** Gestión de sesiones mediante Tokens de Acceso.
+### v1.4 - Identidad Visual MoneyBic
+- **Colores Globales:**
+  - Fondo: `#212529`
+  - Primario: `#8BF724` (Verde Lima)
+  - Texto: `#FFFFFF`
+- **Logo:** Uso de imagen oficial en pantalla de acceso.
+- **UI:** Estilo oscuro moderno con componentes de alta visibilidad.
 
 ### v1.2 - Flujo de Solicitudes
-- **Formulario:** Captura de ubicación origen (A), destino (B) y descripción detallada.
-- **Validación:** Control de campos obligatorios y feedback mediante Snackbars.
+- **Formulario:** Captura de ubicación A, ubicación B y descripción.
+- **UI:** Tarjetas con bordes redondeados y dropdowns estilizados.
