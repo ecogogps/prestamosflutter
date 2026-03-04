@@ -59,7 +59,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'MXN',
+                      '8,773.80 MXN',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 32,
