@@ -1,264 +1,199 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:myapp/providers/auth_provider.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import '../providers/auth_provider.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    const Color primaryColor = Color(0xFF71AF57);
+    const Color backgroundColor = Color(0xFF121212);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFDF7F2),
+      backgroundColor: backgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.black54),
+            icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: () => authProvider.signOut(),
           ),
         ],
       ),
       body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Logo
-            Image.network(
-              'https://i.postimg.cc/Jzd6XVzQ/MONEYBIC-LOGO.png',
-              height: 120,
-              fit: BoxFit.contain,
-            ),
-            const SizedBox(height: 20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Logo mediano
+              Image.network(
+                'https://i.postimg.cc/Jzd6XVzQ/MONEYBIC-LOGO.png',
+                height: 120,
+                errorBuilder: (context, error, stackTrace) => const Icon(Icons.account_balance, size: 80, color: primaryColor),
+              ),
+              const SizedBox(height: 30),
 
-            // Tarjeta de Límite de Préstamo
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 20),
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFFF8C00), Color(0xFFFFB347)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+              // Widget: Tu límite de préstamo
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [primaryColor, primaryColor.withOpacity(0.8)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.orange.withOpacity(0.3),
-                    blurRadius: 15,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  const Text(
-                    'Tu límite de préstamo',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    '\$ 25,000',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 42,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFFD700),
-                      foregroundColor: Colors.orange[900],
-                      minimumSize: const Size(double.infinity, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(25),
+                child: Column(
+                  children: [
+                    const Text(
+                      'Tu límite de préstamo',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
                       ),
-                      elevation: 0,
                     ),
-                    child: const Text(
-                      'Solicitar ahora',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    const SizedBox(height: 10),
+                    const Text(
+                      '8,851.67',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 42,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      _FeatureIcon(icon: Icons.bolt, label: 'Rápido'),
-                      _Separator(),
-                      _FeatureIcon(icon: Icons.thumb_up_outlined, label: 'Conveniente'),
-                      _Separator(),
-                      _FeatureIcon(icon: Icons.verified_user_outlined, label: 'Seguro'),
-                    ],
-                  ),
-                ],
+                    const Text(
+                      'MXN',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: () {},
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: primaryColor,
+                        minimumSize: const Size(double.infinity, 50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Solicitar ahora',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
 
-            const SizedBox(height: 30),
+              const SizedBox(height: 15),
 
-            // Sección de Pasos
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Préstamo en solo 3 pasos',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF333333),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  _StepCard(
-                    icon: FontAwesomeIcons.fileSignature,
-                    iconColor: Colors.amber,
-                    title: 'El Paso 1',
-                    subtitle: 'Complete la información',
-                  ),
-                  _StepCard(
-                    icon: FontAwesomeIcons.userCheck,
-                    iconColor: Colors.orange,
-                    title: 'El Paso 2',
-                    subtitle: 'Acceso a los préstamos',
-                  ),
-                  _StepCard(
-                    icon: FontAwesomeIcons.paperPlane,
-                    iconColor: Colors.blue,
-                    title: 'El Paso 3',
-                    subtitle: 'Presentar la solicitud',
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-            
-            // Footer text
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
+              // Fila de confianza
+              Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Icon(Icons.shield, size: 16, color: Colors.orange),
-                  SizedBox(width: 8),
-                  Text(
-                    'Plataforma de préstamos en línea segura y confiable',
-                    style: TextStyle(color: Colors.grey, fontSize: 12),
-                  ),
+                children: [
+                  _buildTrustItem(Icons.flash_on, 'rápido'),
+                  _buildSeparator(),
+                  _buildTrustItem(Icons.thumb_up, 'conveniente'),
+                  _buildSeparator(),
+                  _buildTrustItem(Icons.shield, 'seguro'),
                 ],
               ),
-            ),
-            const SizedBox(height: 20),
-          ],
+
+              const SizedBox(height: 40),
+
+              // Sección 3 Pasos
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Préstamo en solo 3 pasos',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              _buildStepItem('1', 'Complete la información', Icons.edit_document),
+              _buildStepItem('2', 'Acceso a los préstamos', Icons.account_balance_wallet),
+              _buildStepItem('3', 'Presentar la solicitud', Icons.send),
+
+              const SizedBox(height: 40),
+
+              // Texto de confianza inferior
+              const Text(
+                'Plataforma de préstamos en linea segura y confiable',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white54,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 40),
+            ],
+          ),
         ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        selectedItemColor: Colors.orange,
-        unselectedItemColor: Colors.grey,
-        currentIndex: 0,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Inicio'),
-          BottomNavigationBarItem(icon: Icon(Icons.account_balance_wallet), label: 'Mi préstamo'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Mi'),
-        ],
       ),
     );
   }
-}
 
-class _FeatureIcon extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  const _FeatureIcon({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildTrustItem(IconData icon, String text) {
     return Row(
       children: [
-        Icon(icon, size: 14, color: Colors.white),
+        Icon(icon, size: 14, color: const Color(0xFF71AF57)),
         const SizedBox(width: 4),
-        Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)),
+        Text(
+          text,
+          style: const TextStyle(color: Colors.white70, fontSize: 12),
+        ),
       ],
     );
   }
-}
 
-class _Separator extends StatelessWidget {
-  const _Separator();
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildSeparator() {
     return const Padding(
       padding: EdgeInsets.symmetric(horizontal: 8),
-      child: Text('|', style: TextStyle(color: Colors.white54)),
+      child: Text('|', style: TextStyle(color: Colors.white24)),
     );
   }
-}
 
-class _StepCard extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String subtitle;
-
-  const _StepCard({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+  Widget _buildStepItem(String number, String title, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
+            width: 28,
+            height: 28,
+            decoration: const BoxDecoration(
+              color: Color(0xFF71AF57),
+              shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: iconColor, size: 24),
-          ),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            child: Center(
+              child: Text(
+                number,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               ),
-              Text(
-                subtitle,
-                style: const TextStyle(color: Colors.grey, fontSize: 14),
-              ),
-            ],
+            ),
           ),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+            ),
+          ),
+          Icon(icon, color: const Color(0xFF71AF57), size: 24),
         ],
       ),
     );
