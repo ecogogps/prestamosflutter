@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:myapp/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    const Color primaryColor = Color(0xFF71AF57);
-    const Color backgroundColor = Color(0xFF121212);
+    final authProvider = Provider.of<AuthProvider>(context);
+    const primaryColor = Color(0xFF71AF57);
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: const Color(0xFF212529),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -25,19 +25,19 @@ class HomeScreen extends StatelessWidget {
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Logo mediano
+              // Logo centrado
               Image.network(
                 'https://i.postimg.cc/Jzd6XVzQ/MONEYBIC-LOGO.png',
                 height: 120,
-                errorBuilder: (context, error, stackTrace) => const Icon(Icons.account_balance, size: 80, color: primaryColor),
+                fit: BoxFit.contain,
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 32),
 
-              // Widget: Tu límite de préstamo
+              // Widget de Límite de Préstamo
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(24),
@@ -48,6 +48,13 @@ class HomeScreen extends StatelessWidget {
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: primaryColor.withOpacity(0.3),
+                      blurRadius: 15,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
                 ),
                 child: Column(
                   children: [
@@ -55,11 +62,11 @@ class HomeScreen extends StatelessWidget {
                       'Tu límite de préstamo',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 18,
+                        fontSize: 16,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     const Text(
                       '8,851.67',
                       style: TextStyle(
@@ -71,8 +78,9 @@ class HomeScreen extends StatelessWidget {
                     const Text(
                       'MXN',
                       style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 16,
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w400,
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -85,33 +93,33 @@ class HomeScreen extends StatelessWidget {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
+                        elevation: 0,
                       ),
                       child: const Text(
                         'Solicitar ahora',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(height: 20),
 
-              const SizedBox(height: 15),
-
-              // Fila de confianza
+              // Fila de beneficios capitalizados
               Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildTrustItem(Icons.flash_on, 'rápido'),
-                  _buildSeparator(),
-                  _buildTrustItem(Icons.thumb_up, 'conveniente'),
-                  _buildSeparator(),
-                  _buildTrustItem(Icons.shield, 'seguro'),
+                  _buildQuickInfo(FontAwesomeIcons.bolt, 'Rápido', primaryColor),
+                  _buildQuickInfo(FontAwesomeIcons.thumbsUp, 'Conveniente', primaryColor),
+                  _buildQuickInfo(FontAwesomeIcons.shieldHalved, 'Seguro', primaryColor),
                 ],
               ),
-
               const SizedBox(height: 40),
 
-              // Sección 3 Pasos
+              // Sección de 3 Pasos
               const Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
@@ -123,21 +131,31 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
-              _buildStepItem('1', 'Complete la información', Icons.edit_document),
-              _buildStepItem('2', 'Acceso a los préstamos', Icons.account_balance_wallet),
-              _buildStepItem('3', 'Presentar la solicitud', Icons.send),
-
+              const SizedBox(height: 24),
+              
+              // Lista vertical de pasos con diseño de captura
+              _buildStepRow(1, FontAwesomeIcons.fileLines, 'Complete la información', primaryColor),
+              _buildStepRow(2, FontAwesomeIcons.buildingColumns, 'Acceso a los préstamos', primaryColor),
+              _buildStepRow(3, FontAwesomeIcons.paperPlane, 'Presentar la solicitud', primaryColor),
+              
               const SizedBox(height: 40),
 
-              // Texto de confianza inferior
-              const Text(
-                'Plataforma de préstamos en linea segura y confiable',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white54,
-                  fontSize: 14,
-                ),
+              // Mensaje de seguridad inferior con icono
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.verified_user_outlined, color: Colors.white54, size: 18),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Plataforma de préstamos en linea segura y confiable',
+                      style: TextStyle(
+                        color: Colors.white54,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 40),
             ],
@@ -147,53 +165,66 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTrustItem(IconData icon, String text) {
+  Widget _buildQuickInfo(IconData icon, String label, Color color) {
     return Row(
       children: [
-        Icon(icon, size: 14, color: const Color(0xFF71AF57)),
-        const SizedBox(width: 4),
+        Icon(icon, color: color, size: 14),
+        const SizedBox(width: 6),
         Text(
-          text,
-          style: const TextStyle(color: Colors.white70, fontSize: 12),
+          label,
+          style: const TextStyle(color: Colors.white, fontSize: 13),
         ),
       ],
     );
   }
 
-  Widget _buildSeparator() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 8),
-      child: Text('|', style: TextStyle(color: Colors.white24)),
-    );
-  }
-
-  Widget _buildStepItem(String number, String title, IconData icon) {
+  Widget _buildStepRow(int number, IconData icon, String text, Color color) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.only(bottom: 24.0),
       child: Row(
         children: [
+          // Círculo con número
           Container(
-            width: 28,
-            height: 28,
-            decoration: const BoxDecoration(
-              color: Color(0xFF71AF57),
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
               shape: BoxShape.circle,
+              border: Border.all(color: color, width: 2),
             ),
             child: Center(
               child: Text(
-                number,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                number.toString(),
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 15),
+          const SizedBox(width: 16),
+          // Icono decorativo
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: Colors.white70, size: 20),
+          ),
+          const SizedBox(width: 16),
+          // Texto descriptivo
           Expanded(
             child: Text(
-              title,
-              style: const TextStyle(color: Colors.white, fontSize: 16),
+              text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+              ),
             ),
           ),
-          Icon(icon, color: const Color(0xFF71AF57), size: 24),
         ],
       ),
     );
