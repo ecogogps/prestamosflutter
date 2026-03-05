@@ -8,6 +8,8 @@ import 'screens/otp_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/solicitar_screen.dart';
 import 'screens/prestamos_screen.dart';
+import 'screens/perfil_screen.dart';
+import 'widgets/main_navigation.dart';
 import 'core/app_colors.dart';
 
 void main() async {
@@ -47,7 +49,7 @@ class MyApp extends StatelessWidget {
         return null;
       },
       routes: [
-        GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
+        // Rutas sin Navbar (Auth)
         GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
         GoRoute(
           path: '/otp',
@@ -56,8 +58,17 @@ class MyApp extends StatelessWidget {
             return OtpScreen(phoneNumber: phone);
           },
         ),
-        GoRoute(path: '/solicitar', builder: (context, state) => const SolicitarScreen()),
-        GoRoute(path: '/prestamos', builder: (context, state) => const PrestamosScreen()),
+        
+        // ShellRoute para pantallas con Navbar
+        ShellRoute(
+          builder: (context, state, child) => MainNavigation(child: child),
+          routes: [
+            GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
+            GoRoute(path: '/prestamos', builder: (context, state) => const PrestamosScreen()),
+            GoRoute(path: '/perfil', builder: (context, state) => const PerfilScreen()),
+            GoRoute(path: '/solicitar', builder: (context, state) => const SolicitarScreen()),
+          ],
+        ),
       ],
     );
 
