@@ -1,7 +1,7 @@
 
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myapp/services/loan_service.dart';
 
 class SolicitarScreen extends StatefulWidget {
   const SolicitarScreen({super.key});
@@ -11,24 +11,27 @@ class SolicitarScreen extends StatefulWidget {
 }
 
 class _SolicitarScreenState extends State<SolicitarScreen> {
-  double _monto = 500.0;
+  double _monto = 5000;
   String _plazo = '7 días';
   String _formaPago = 'Pago semanal';
   bool _isLoading = false;
 
-  final LoanService _loanService = LoanService();
+  final List<String> _plazos = ['7 días', '15 días', '30 días'];
+  final List<String> _formasPago = ['Pago semanal', 'Pago quincenal', 'Pago único'];
 
-  final List<String> _plazos = ['7 días', '14 días', '30 días'];
-  final List<String> _formasPago = ['Pago semanal', 'Pago quincenal', 'Pago mensual'];
-
-  Future<void> _submitRequest() async {
+  Future<void> _solicitarPrestamo() async {
     setState(() => _isLoading = true);
+    final user = Supabase.instance.client.auth.currentUser;
+
     try {
-      await _loanService.requestLoan(
-        amount: _monto,
-        term: _plazo,
-        method: _formaPago,
-      );
+      await Supabase.instance.client.from('loans').insert({
+        'user_id': user?.id,
+        'amount': _monto,
+        'payment_term': _plazo,
+        'payment_method': _formaPago,
+        'status': 'pending',
+      });
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Solicitud enviada correctamente')),
@@ -48,10 +51,9 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const brandColor = Color(0xFF71AF57);
-    
+    final colorMarca = const Color(0xFF71AF57);
+
     return Scaffold(
-      backgroundColor: const Color(0xFF212529),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -61,7 +63,7 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -71,115 +73,145 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
                 height: 120,
               ),
             ),
-            const SizedBox(height: 20),
-            const Text(
-              'Préstamos rápidos y seguros',
-              style: TextStyle(color: Colors.white70, fontSize: 16),
-            ),
             const SizedBox(height: 10),
-            const Text(
-              '¡Hola!',
-              style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const Text(
-              '¿Cuánto dinero necesitas?',
-              style: TextStyle(color: Colors.white70, fontSize: 16),
+            const Center(
+              child: Text(
+                'Préstamos rápidos y seguros',
+                style: TextStyle(color: Colors.grey, fontSize: 14),
+              ),
             ),
             const SizedBox(height: 30),
-            
+            const Text(
+              '¡Hola!',
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              '¿Cuánto dinero necesitas?',
+              style: TextStyle(fontSize: 18, color: Colors.grey),
+            ),
+            const SizedBox(height: 40),
+            // Widget de Monto
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: brandColor.withOpacity(0.3)),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
                 children: [
                   Text(
-                    '\$${_monto.toInt()} MXN',
-                    style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
+                    '\$${_monto.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}',
+                    style: TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                      color: colorMarca,
+                    ),
                   ),
-                  Slider(
-                    value: _monto,
-                    min: 0,
-                    max: 50300,
-                    divisions: 50300 ~/ 500,
-                    activeColor: brandColor,
-                    inactiveColor: Colors.white24,
-                    onChanged: (value) {
-                      setState(() => _monto = value);
-                    },
+                  const Text('MXN', style: TextStyle(color: Colors.grey)),
+                  const SizedBox(height: 20),
+                  SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      activeTrackColor: colorMarca,
+                      inactiveTrackColor: Colors.grey.withOpacity(0.3),
+                      thumbColor: Colors.white,
+                      overlayColor: colorMarca.withOpacity(0.2),
+                    ),
+                    child: Slider(
+                      value: _monto,
+                      min: 0,
+                      max: 50300,
+                      divisions: 50300 ~/ 500,
+                      onChanged: (value) {
+                        setState(() {
+                          _monto = (value / 500).round() * 500.0;
+                        });
+                      },
+                    ),
                   ),
-                  const Row(
+                  Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('\$0', style: TextStyle(color: Colors.white54, fontSize: 12)),
-                      Text('(desde \$0 hasta \$50,300 MXN)', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                    children: const [
+                      Text('\$0', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                      Text('\$50,300 MXN', style: TextStyle(color: Colors.grey, fontSize: 12)),
                     ],
                   ),
                 ],
               ),
             ),
-            
             const SizedBox(height: 30),
-            _buildLabel('Plazo de pago'),
-            _buildDropdown(_plazo, _plazos, (val) => setState(() => _plazo = val!)),
+            // Plazo de pago
+            const Text('Plazo de pago', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _plazo,
+                  isExpanded: true,
+                  dropdownColor: const Color(0xFF212529),
+                  items: _plazos.map((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                  onChanged: (val) => setState(() => _plazo = val!),
+                ),
+              ),
+            ),
             const SizedBox(height: 20),
-            _buildLabel('Forma de pago'),
-            _buildDropdown(_formaPago, _formasPago, (val) => setState(() => _formaPago = val!)),
+            // Forma de pago
+            const Text('Forma de pago', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _formaPago,
+                  isExpanded: true,
+                  dropdownColor: const Color(0xFF212529),
+                  items: _formasPago.map((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                  onChanged: (val) => setState(() => _formaPago = val!),
+                ),
+              ),
+            ),
             const SizedBox(height: 40),
-            
             SizedBox(
               width: double.infinity,
-              height: 55,
+              height: 56,
               child: ElevatedButton(
-                onPressed: _isLoading ? null : _submitRequest,
+                onPressed: _isLoading ? null : _solicitarPrestamo,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: brandColor,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  backgroundColor: colorMarca,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: _isLoading 
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text(
-                      'Solicitar préstamo',
-                      style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
+                child: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
+                        'Solicitar préstamo',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
               ),
             ),
             const SizedBox(height: 40),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Text(text, style: const TextStyle(color: Colors.white70, fontSize: 14)),
-    );
-  }
-
-  Widget _buildDropdown(String value, List<String> items, ValueChanged<String?> onChanged) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          dropdownColor: const Color(0xFF212529),
-          isExpanded: true,
-          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white70),
-          items: items.map((e) => DropdownMenuItem(
-            value: e,
-            child: Text(e, style: const TextStyle(color: Colors.white)),
-          )).toList(),
-          onChanged: onChanged,
         ),
       ),
     );
