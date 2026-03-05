@@ -11,6 +11,7 @@
         "flutter",
         "font_awesome_flutter",
         "go_router",
+        "intl",
         "provider",
         "supabase_flutter"
       ],
@@ -42,6 +43,15 @@
         "stream_channel",
         "test_api",
         "vector_math"
+      ]
+    },
+    {
+      "name": "intl",
+      "version": "0.19.0",
+      "dependencies": [
+        "clock",
+        "meta",
+        "path"
       ]
     },
     {

@@ -1,5 +1,7 @@
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import '../core/app_colors.dart';
 
@@ -17,9 +19,9 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
   bool _isLoading = false;
 
   final List<String> _plazos = ['7 días', '15 días', '30 días'];
-  final List<String> _formasPago = ['Pago semanal', 'Pago quincenal', 'Pago mensual'];
+  final List<String> _formasPago = ['Pago semanal', 'Pago quincenal', 'Pago único'];
 
-  Future<void> _enviarSolicitud() async {
+  Future<void> _solicitarPrestamo() async {
     if (_amount < 500) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('El monto mínimo es de \$500')),
@@ -28,7 +30,7 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
     }
 
     setState(() => _isLoading = true);
-    
+
     try {
       final user = Supabase.instance.client.auth.currentUser;
       if (user == null) return;
@@ -42,12 +44,12 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
       });
 
       if (mounted) {
-        context.push('/prestamos');
+        context.pushReplacement('/prestamos');
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(content: Text('Error al solicitar: $e')),
         );
       }
     } finally {
@@ -57,6 +59,8 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currencyFormat = NumberFormat.simpleCurrency(locale: 'es_MX', decimalDigits: 0);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -82,52 +86,49 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
             const Center(
               child: Text(
                 'Préstamos rápidos y seguros',
-                style: TextStyle(color: Colors.white70, fontSize: 16),
+                style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
               ),
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 30),
             const Text(
               '¡Hola!',
               style: TextStyle(color: AppColors.text, fontSize: 24, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 5),
             const Text(
               '¿Cuánto dinero necesitas?',
-              style: TextStyle(color: Colors.white70, fontSize: 18),
+              style: TextStyle(color: Colors.white70, fontSize: 16),
             ),
-            const SizedBox(height: 50),
-            
-            // Widget de monto seleccionado
+            const SizedBox(height: 40),
             Center(
               child: Text(
-                '\$${_amount.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}',
+                currencyFormat.format(_amount),
                 style: const TextStyle(
                   color: AppColors.primary,
-                  fontSize: 48,
+                  fontSize: 40,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
-            const SizedBox(height: 20),
-            
-            // Slider
+            const SizedBox(height: 10),
             SliderTheme(
               data: SliderTheme.of(context).copyWith(
                 activeTrackColor: AppColors.primary,
                 inactiveTrackColor: Colors.white12,
                 thumbColor: AppColors.primary,
                 overlayColor: AppColors.primary.withOpacity(0.2),
-                valueIndicatorBackgroundColor: AppColors.primary,
+                valueIndicatorColor: AppColors.primary,
+                valueIndicatorTextStyle: const TextStyle(color: Colors.black),
               ),
               child: Slider(
                 value: _amount,
                 min: 0,
-                max: 50500, // Ajustado para permitir incrementos exactos
-                divisions: 101, // 50500 / 500 = 101
+                max: 50500,
+                divisions: 101,
+                label: currencyFormat.format(_amount),
                 onChanged: (value) {
                   setState(() {
-                    // Limitamos visualmente a 50300 pero el slider permite el rango para divisiones limpias
-                    _amount = value > 50300 ? 50300 : value;
+                    _amount = (value > 50300) ? 50300 : value;
                   });
                 },
               ),
@@ -137,16 +138,13 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: const [
-                  Text('\$0', style: TextStyle(color: Colors.white30)),
-                  Text('hasta \$50,300 MXN', style: TextStyle(color: Colors.white30)),
+                  Text('\$0', style: TextStyle(color: Colors.white54)),
+                  Text('hasta \$50,300 MXN', style: TextStyle(color: Colors.white54)),
                 ],
               ),
             ),
-            
             const SizedBox(height: 40),
-            
-            // Plazo de pago
-            const Text('Plazo de pago', style: TextStyle(color: AppColors.text, fontSize: 16)),
+            const Text('Plazo de pago', style: TextStyle(color: Colors.white70)),
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 15),
@@ -166,15 +164,12 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
                       child: Text(value),
                     );
                   }).toList(),
-                  onChanged: (value) => setState(() => _plazo = value!),
+                  onChanged: (val) => setState(() => _plazo = val!),
                 ),
               ),
             ),
-            
             const SizedBox(height: 20),
-            
-            // Forma de pago
-            const Text('Forma de pago', style: TextStyle(color: AppColors.text, fontSize: 16)),
+            const Text('Forma de pago', style: TextStyle(color: Colors.white70)),
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 15),
@@ -194,31 +189,27 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
                       child: Text(value),
                     );
                   }).toList(),
-                  onChanged: (value) => setState(() => _formaPago = value!),
+                  onChanged: (val) => setState(() => _formaPago = val!),
                 ),
               ),
             ),
-            
             const SizedBox(height: 50),
-            
             SizedBox(
               width: double.infinity,
               height: 55,
               child: ElevatedButton(
-                onPressed: _isLoading ? null : _enviarSolicitud,
+                onPressed: _isLoading ? null : _solicitarPrestamo,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.black,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 5,
-                  shadowColor: AppColors.primary.withOpacity(0.4),
                 ),
-                child: _isLoading 
-                  ? const CircularProgressIndicator(color: Colors.black)
-                  : const Text(
-                      'Solicitar préstamo',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
+                child: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.black)
+                    : const Text(
+                        'Solicitar préstamo',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
               ),
             ),
             const SizedBox(height: 30),
