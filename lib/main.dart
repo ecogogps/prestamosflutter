@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +7,7 @@ import 'screens/login_screen.dart';
 import 'screens/otp_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/solicitar_screen.dart';
+import 'screens/prestamos_screen.dart';
 import 'core/app_colors.dart';
 
 void main() async {
@@ -57,6 +57,7 @@ class MyApp extends StatelessWidget {
           },
         ),
         GoRoute(path: '/solicitar', builder: (context, state) => const SolicitarScreen()),
+        GoRoute(path: '/prestamos', builder: (context, state) => const PrestamosScreen()),
       ],
     );
 

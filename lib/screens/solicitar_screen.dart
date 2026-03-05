@@ -1,6 +1,6 @@
-
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:go_router/go_router.dart';
 import '../core/app_colors.dart';
 
 class SolicitarScreen extends StatefulWidget {
@@ -11,18 +11,18 @@ class SolicitarScreen extends StatefulWidget {
 }
 
 class _SolicitarScreenState extends State<SolicitarScreen> {
-  double _montoSolicitado = 0;
-  String _plazoPago = '7 días';
+  double _monto = 500.0;
+  String _plazo = '7 días';
   String _formaPago = 'Pago semanal';
   bool _isLoading = false;
 
   final List<String> _plazos = ['7 días', '15 días', '30 días'];
-  final List<String> _formas = ['Pago semanal', 'Pago quincenal', 'Pago único'];
+  final List<String> _formasPago = ['Pago semanal', 'Pago quincenal', 'Pago único'];
 
-  Future<void> _enviarSolicitud() async {
-    if (_montoSolicitado <= 0) {
+  Future<void> _solicitarPrestamo() async {
+    if (_monto < 500) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor selecciona un monto válido')),
+        const SnackBar(content: Text('El monto mínimo es de $500')),
       );
       return;
     }
@@ -30,27 +30,24 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId == null) return;
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) throw 'Usuario no autenticado';
 
       await Supabase.instance.client.from('loans').insert({
-        'user_id': userId,
-        'amount': _montoSolicitado,
-        'payment_term': _plazoPago,
+        'user_id': user.id,
+        'amount': _monto,
+        'payment_term': _plazo,
         'payment_method': _formaPago,
         'status': 'pending',
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Solicitud enviada correctamente')),
-        );
-        Navigator.pop(context);
+        context.pushReplacement('/prestamos');
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(content: Text('Error al solicitar: $e')),
         );
       }
     } finally {
@@ -67,40 +64,34 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.text),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 25),
+        padding: const EdgeInsets.symmetric(horizontal: 30),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Image.network(
-                'https://i.postimg.cc/Jzd6XVzQ/MONEYBIC-LOGO.png',
-                height: 100,
-              ),
+            Image.network(
+              'https://i.postimg.cc/Jzd6XVzQ/MONEYBIC-LOGO.png',
+              height: 100,
             ),
             const SizedBox(height: 20),
-            const Center(
-              child: Text(
-                'Préstamos rápidos y seguros',
-                style: TextStyle(color: Colors.white70, fontSize: 16),
-              ),
+            const Text(
+              'Préstamos rápidos y seguros',
+              style: TextStyle(color: AppColors.primary, fontSize: 18, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 30),
-            const Text(
-              '¡Hola!',
-              style: TextStyle(color: AppColors.text, fontSize: 32, fontWeight: FontWeight.bold),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text('¡Hola!', style: TextStyle(color: AppColors.text, fontSize: 24, fontWeight: FontWeight.bold)),
             ),
-            const SizedBox(height: 10),
-            const Text(
-              '¿Cuánto dinero necesitas?',
-              style: TextStyle(color: Colors.white70, fontSize: 18),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text('¿Cuánto dinero necesitas?', style: TextStyle(color: Colors.white70, fontSize: 16)),
             ),
             const SizedBox(height: 40),
             
-            // Widget de Monto
+            // Widget de monto
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -110,32 +101,24 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
               child: Column(
                 children: [
                   Text(
-                    '\$${_montoSolicitado.toInt()} MXN',
-                    style: const TextStyle(color: AppColors.primary, fontSize: 36, fontWeight: FontWeight.bold),
+                    '\$${_monto.toInt()}',
+                    style: const TextStyle(color: AppColors.primary, fontSize: 40, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 20),
-                  SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      activeTrackColor: AppColors.primary,
-                      inactiveTrackColor: Colors.white12,
-                      thumbColor: AppColors.primary,
-                      overlayColor: AppColors.primary.withOpacity(0.2),
-                    ),
-                    child: Slider(
-                      value: _montoSolicitado.clamp(0, 50500),
-                      min: 0,
-                      max: 50500,
-                      divisions: 101, // 50500 / 500 = 101 pasos exactos de 500
-                      onChanged: (val) {
-                        setState(() {
-                          // Limitamos a 50300 visualmente si es necesario, o dejamos 50500 para redondear
-                          _montoSolicitado = val > 50300 ? 50300 : val;
-                        });
-                      },
-                    ),
+                  Slider(
+                    value: _monto,
+                    min: 0,
+                    max: 50500,
+                    divisions: 101,
+                    activeColor: AppColors.primary,
+                    inactiveColor: Colors.white10,
+                    onChanged: (value) {
+                      setState(() {
+                        _monto = value > 50300 ? 50300 : value;
+                      });
+                    },
                   ),
                   const Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.between,
                     children: [
                       Text('\$0', style: TextStyle(color: Colors.white30)),
                       Text('hasta \$50,300 MXN', style: TextStyle(color: Colors.white30)),
@@ -147,32 +130,29 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
             
             const SizedBox(height: 30),
             
-            const Text('Plazo de pago', style: TextStyle(color: Colors.white70, fontSize: 16)),
-            const SizedBox(height: 10),
-            _buildDropdown(_plazoPago, _plazos, (val) => setState(() => _plazoPago = val!)),
+            // Plazo
+            _buildSelector('Plazo de pago', _plazo, _plazos, (val) => setState(() => _plazo = val!)),
             
             const SizedBox(height: 20),
             
-            const Text('Forma de pago', style: TextStyle(color: Colors.white70, fontSize: 16)),
-            const SizedBox(height: 10),
-            _buildDropdown(_formaPago, _formas, (val) => setState(() => _formaPago = val!)),
+            // Forma de Pago
+            _buildSelector('Forma de pago', _formaPago, _formasPago, (val) => setState(() => _formaPago = val!)),
             
-            const SizedBox(height: 50),
+            const SizedBox(height: 40),
             
             SizedBox(
               width: double.infinity,
-              height: 60,
+              height: 55,
               child: ElevatedButton(
-                onPressed: _isLoading ? null : _enviarSolicitud,
+                onPressed: _isLoading ? null : _solicitarPrestamo,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                  elevation: 5,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 child: _isLoading 
                   ? const CircularProgressIndicator(color: Colors.black)
-                  : const Text('Solicitar préstamo', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  : const Text('Solicitar préstamo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ),
             ),
             const SizedBox(height: 30),
@@ -182,28 +162,30 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
     );
   }
 
-  Widget _buildDropdown(String value, List<String> items, ValueChanged<String?> onChanged) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 15),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          isExpanded: true,
-          dropdownColor: AppColors.background,
-          style: const TextStyle(color: AppColors.text, fontSize: 16),
-          items: items.map((String item) {
-            return DropdownMenuItem<String>(
-              value: item,
-              child: Text(item),
-            );
-          }).toList(),
-          onChanged: onChanged,
+  Widget _buildSelector(String label, String value, List<String> options, Function(String?) onChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 15),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: value,
+              isExpanded: true,
+              dropdownColor: AppColors.background,
+              style: const TextStyle(color: AppColors.text, fontSize: 16),
+              items: options.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+              onChanged: onChanged,
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 }
