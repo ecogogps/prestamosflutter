@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -31,7 +30,6 @@ class _OtpScreenState extends State<OtpScreen> {
         const SnackBar(content: Text('Código incorrecto. Verifica e intenta de nuevo.')),
       );
     }
-    // Si tiene éxito, el AuthProvider notificará y GoRouter redirigirá automáticamente
   }
 
   @override
