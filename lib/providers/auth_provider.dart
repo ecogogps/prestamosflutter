@@ -1,28 +1,25 @@
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:developer' as developer;
 
 class AuthProvider with ChangeNotifier {
-  final SupabaseClient _supabase = Supabase.instance.client;
-  Session? _session;
+  final _supabase = Supabase.instance.client;
 
-  AuthProvider() {
-    _session = _supabase.auth.currentSession;
-    _supabase.auth.onAuthStateChange.listen((data) {
-      _session = data.session;
-      notifyListeners();
-    });
-  }
-
-  bool get isAuthenticated => _session != null;
-  Session? get session => _session;
+  User? get currentUser => _supabase.auth.currentUser;
 
   Future<bool> signInWithOtp(String phone) async {
     try {
-      await _supabase.auth.signInWithOtp(phone: phone);
+      await _supabase.auth.signInWithOtp(
+        phone: phone,
+        channel: OtpChannel.sms,
+      );
       return true;
+    } on AuthException catch (e) {
+      developer.log('Error de Supabase Auth: ${e.message}', name: 'auth', error: e);
+      rethrow; // Lanzamos para que la UI pueda mostrar el error específico
     } catch (e) {
-      debugPrint('Error en signInWithOtp: $e');
+      developer.log('Error inesperado en signInWithOtp: $e', name: 'auth');
       return false;
     }
   }
@@ -30,18 +27,19 @@ class AuthProvider with ChangeNotifier {
   Future<bool> verifyOtp(String phone, String token) async {
     try {
       final response = await _supabase.auth.verifyOTP(
-        type: OtpType.sms,
         phone: phone,
         token: token,
+        type: OtpType.sms,
       );
-      return response.session != null;
+      return response.user != null;
     } catch (e) {
-      debugPrint('Error en verifyOtp: $e');
+      developer.log('Error en verifyOtp: $e', name: 'auth');
       return false;
     }
   }
 
   Future<void> signOut() async {
     await _supabase.auth.signOut();
+    notifyListeners();
   }
 }
