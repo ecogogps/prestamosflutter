@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -102,9 +101,10 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             
-            _buildStep(1, Icons.description, 'Complete la información'),
-            _buildStep(2, Icons.verified, 'Acceso a los préstamos'),
-            _buildStep(3, Icons.send, 'Presentar la solicitud'),
+            // Pasamos el brandColor a los pasos para mantener la coherencia de la marca
+            _buildStep(1, Icons.edit_document, 'Complete la información', brandColor),
+            _buildStep(2, Icons.assignment_ind, 'Acceso a los préstamos', brandColor),
+            _buildStep(3, Icons.credit_card, 'Presentar la solicitud', brandColor),
             
             const SizedBox(height: 30),
             const Row(
@@ -135,7 +135,8 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStep(int num, IconData icon, String title) {
+  // Se modificó la estructura para que sea igual a la captura
+  Widget _buildStep(int num, IconData icon, String title, Color iconBgColor) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -145,13 +146,29 @@ class HomeScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, color: const Color(0xFF71AF57), size: 30),
+          // Contenedor del icono estilo captura (cuadro redondeado con fondo de color)
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: iconBgColor, // Utiliza tu color de marca
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: Colors.white, size: 28),
+          ),
           const SizedBox(width: 16),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Paso $num', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-              Text(title, style: const TextStyle(color: Colors.grey, fontSize: 14)),
+              Text(
+                'El Paso $num', 
+                style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                title, 
+                style: const TextStyle(color: Colors.grey, fontSize: 14),
+              ),
             ],
           ),
         ],
