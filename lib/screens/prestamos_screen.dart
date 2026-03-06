@@ -120,7 +120,7 @@ class _PrestamosScreenState extends State<PrestamosScreen> {
         statusText = 'PENDIENTE';
     }
 
-    final formattedDate = DateFormat('dd/MM/yyyy HH:mm').format(date);
+    final formattedDate = DateFormat('dd/MM/yyyy').format(date); 
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),

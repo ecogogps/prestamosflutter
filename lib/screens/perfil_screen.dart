@@ -24,17 +24,11 @@ class PerfilScreen extends StatelessWidget {
               Center(
                 child: Column(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.primary, width: 2),
-                      ),
-                      child: const CircleAvatar(
-                        radius: 50,
-                        backgroundColor: Colors.white10,
-                        child: Icon(Icons.person, size: 50, color: AppColors.primary),
-                      ),
+                    Image.network(
+                      'https://i.postimg.cc/Jzd6XVzQ/MONEYBIC-LOGO.png',
+                      height: 100,
+                      width: 100,
+                      fit: BoxFit.contain,
                     ),
                     const SizedBox(height: 16),
                     const Text(
@@ -55,7 +49,7 @@ class PerfilScreen extends StatelessWidget {
               const SizedBox(height: 40),
               
               // Opciones de Perfil
-              _buildProfileItem(Icons.history, 'Mi Historial', () {}),
+              _buildProfileItem(Icons.history, 'Mis Préstamos', () {}),
               _buildProfileItem(Icons.help_outline, 'Centro de Ayuda', () {}),
               _buildProfileItem(Icons.description, 'Términos y Condiciones', () {}),
               _buildProfileItem(Icons.privacy_tip_outlined, 'Política de Privacidad', () {}),
