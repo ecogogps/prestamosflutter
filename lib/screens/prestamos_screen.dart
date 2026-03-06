@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../core/app_colors.dart';
 
@@ -12,63 +11,38 @@ class PrestamosScreen extends StatefulWidget {
 }
 
 class _PrestamosScreenState extends State<PrestamosScreen> {
-  late final Stream<List<Map<String, dynamic>>> _loansStream;
-
-  @override
-  void initState() {
-    super.initState();
-    final userId = Supabase.instance.client.auth.currentUser?.id;
-    _loansStream = Supabase.instance.client
-        .from('loans')
-        .stream(primaryKey: ['id'])
-        .eq('user_id', userId ?? '')
-        .order('created_at', ascending: false);
-  }
-
-  String _getStatusLabel(String status) {
-    switch (status) {
-      case 'pending': return 'Pendiente';
-      case 'accepted': return 'Aceptado';
-      case 'rejected': return 'Rechazado';
-      case 'paid': return 'Pagado';
-      case 'overdue': return 'Vencido';
-      default: return status;
-    }
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'pending': return Colors.orange;
-      case 'accepted': return AppColors.primary;
-      case 'rejected': return Colors.red;
-      case 'paid': return Colors.blue;
-      case 'overdue': return Colors.purple;
-      default: return Colors.grey;
-    }
-  }
+  final supabase = Supabase.instance.client;
 
   @override
   Widget build(BuildContext context) {
+    final userId = supabase.auth.currentUser?.id;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        title: const Text('Mis Préstamos', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text('Mis Préstamos', style: TextStyle(color: AppColors.text)),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.text),
-          onPressed: () => context.go('/'),
-        ),
+        centerTitle: true,
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: _loansStream,
+        stream: supabase
+            .from('loans')
+            .stream(primaryKey: ['id'])
+            .eq('user_id', userId ?? '')
+            .order('created_at', ascending: false),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator(color: AppColors.primary));
           }
 
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
+            return Center(
+              child: Text(
+                'Error al cargar préstamos: ${snapshot.error}',
+                style: const TextStyle(color: Colors.red),
+              ),
+            );
           }
 
           final loans = snapshot.data ?? [];
@@ -78,14 +52,21 @@ class _PrestamosScreenState extends State<PrestamosScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.history_edu, size: 80, color: Colors.white10),
-                  const SizedBox(height: 20),
-                  const Text('No tienes préstamos registrados', style: TextStyle(color: Colors.white30, fontSize: 18)),
-                  const SizedBox(height: 30),
+                  Icon(Icons.account_balance_wallet_outlined, size: 80, color: Colors.white.withOpacity(0.2)),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No tienes solicitudes aún',
+                    style: TextStyle(color: Colors.white70, fontSize: 18),
+                  ),
+                  const SizedBox(height: 24),
                   ElevatedButton(
-                    onPressed: () => context.push('/solicitar'),
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.black),
-                    child: const Text('Solicitar mi primer préstamo'),
+                    onPressed: () => Navigator.pushNamed(context, '/solicitar'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('Solicitar Préstamo'),
                   ),
                 ],
               ),
@@ -93,66 +74,19 @@ class _PrestamosScreenState extends State<PrestamosScreen> {
           }
 
           return ListView.builder(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             itemCount: loans.length,
             itemBuilder: (context, index) {
               final loan = loans[index];
-              final status = loan['status'] as String;
-              final amount = loan['amount'] as num;
-              final date = DateTime.parse(loan['created_at']);
-              final formattedDate = DateFormat('dd/MM/yyyy HH:mm').format(date);
+              final amount = loan['amount'] ?? 0;
+              final status = loan['status'] ?? 'pending';
+              final term = loan['payment_term']?.toString() ?? '0'; // Corregido: convertir a String de forma segura
+              final method = loan['payment_method'] ?? 'N/A';
+              final createdAt = loan['created_at'] != null 
+                  ? DateTime.parse(loan['created_at']) 
+                  : DateTime.now();
 
-              return Container(
-                margin: const EdgeInsets.only(bottom: 15),
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white10),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '\$${NumberFormat("#,##0", "es_MX").format(amount)} MXN',
-                              style: const TextStyle(color: AppColors.text, fontSize: 22, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(formattedDate, style: const TextStyle(color: Colors.white30, fontSize: 12)),
-                          ],
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: _getStatusColor(status).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: _getStatusColor(status).withOpacity(0.5)),
-                          ),
-                          child: Text(
-                            _getStatusLabel(status),
-                            style: TextStyle(color: _getStatusColor(status), fontWeight: FontWeight.bold, fontSize: 12),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 15),
-                    const Divider(color: Colors.white10),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _infoItem('Plazo', loan['payment_term']),
-                        _infoItem('Forma de Pago', loan['payment_method']),
-                      ],
-                    ),
-                  ],
-                ),
-              );
+              return _buildLoanCard(amount, status, term, method, createdAt);
             },
           );
         },
@@ -160,13 +94,106 @@ class _PrestamosScreenState extends State<PrestamosScreen> {
     );
   }
 
-  Widget _infoItem(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildLoanCard(dynamic amount, String status, String term, String method, DateTime date) {
+    Color statusColor;
+    String statusText;
+
+    switch (status) {
+      case 'accepted':
+        statusColor = Colors.green;
+        statusText = 'ACEPTADO';
+        break;
+      case 'rejected':
+        statusColor = Colors.red;
+        statusText = 'RECHAZADO';
+        break;
+      case 'paid':
+        statusColor = Colors.blue;
+        statusText = 'PAGADO';
+        break;
+      case 'overdue':
+        statusColor = Colors.orange;
+        statusText = 'VENCIDO';
+        break;
+      default:
+        statusColor = Colors.amber;
+        statusText = 'PENDIENTE';
+    }
+
+    final formattedDate = DateFormat('dd/MM/yyyy HH:mm').format(date);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '\$${NumberFormat("#,##0", "es_MX").format(amount)} MXN',
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: statusColor.withOpacity(0.5)),
+                ),
+                child: Text(
+                  statusText,
+                  style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              _buildDetailItem(Icons.calendar_today, 'Plazo', '$term días'),
+              const SizedBox(width: 24),
+              _buildDetailItem(Icons.payments, 'Pago', method),
+            ],
+          ),
+          const Divider(color: Colors.white10, height: 32),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                formattedDate,
+                style: const TextStyle(color: Colors.white38, fontSize: 12),
+              ),
+              const Icon(Icons.arrow_forward_ios, color: Colors.white24, size: 12),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailItem(IconData icon, String label, String value) {
+    return Row(
       children: [
-        Text(label, style: const TextStyle(color: Colors.white30, fontSize: 10)),
-        const SizedBox(height: 2),
-        Text(value, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+        Icon(icon, size: 14, color: Colors.white54),
+        const SizedBox(width: 6),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(color: Colors.white38, fontSize: 10)),
+            Text(value, style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
+          ],
+        ),
       ],
     );
   }

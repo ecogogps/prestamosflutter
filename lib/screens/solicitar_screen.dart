@@ -2,10 +2,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../core/app_colors.dart';
 
@@ -19,111 +19,91 @@ class SolicitarScreen extends StatefulWidget {
 class _SolicitarScreenState extends State<SolicitarScreen> {
   int _currentStep = 0;
   bool _isLoading = false;
-  final _formKey = GlobalKey<FormState>();
+  final supabase = Supabase.instance.client;
 
-  // Mapeo de Estados y Ciudades de México
-  final Map<String, List<String>> _mexicoData = {
-    'Ciudad de México': ['Cuauhtémoc', 'Iztapalapa', 'Benito Juárez', 'Coyoacán', 'Miguel Hidalgo'],
-    'Jalisco': ['Guadalajara', 'Zapopan', 'Tlaquepaque', 'Tlajomulco', 'Puerto Vallarta'],
-    'Nuevo León': ['Monterrey', 'San Pedro Garza García', 'Guadalupe', 'Apodaca', 'San Nicolás'],
-    'Estado de México': ['Toluca', 'Ecatepec', 'Naucalpan', 'Tlalnepantla', 'Nezahualcóyotl'],
-    'Puebla': ['Puebla de Zaragoza', 'Tehuacán', 'San Andrés Cholula', 'Atlixco'],
-    'Yucatán': ['Mérida', 'Kanasín', 'Valladolid', 'Tizimín'],
-  };
-
-  // Controladores de Texto
+  // Controllers
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
+  final _dobController = TextEditingController();
   final _docNumberController = TextEditingController();
   final _accountNumberController = TextEditingController();
   final _emailController = TextEditingController();
   final _addressController = TextEditingController();
-  final _ref1NameController = TextEditingController();
-  final _ref1PhoneController = TextEditingController();
-  final _ref2NameController = TextEditingController();
-  final _ref2PhoneController = TextEditingController();
+  
+  // Seccion 1 - Perfil
+  String _gender = 'Masculino';
+  final _dobMask = MaskTextInputFormatter(mask: '##/##/####', filter: {"#": RegExp(r'[0-9]')});
 
-  // Valores Seleccionados
-  String? _selectedGender;
-  String? _selectedHousing;
+  // Seccion 2 - Inicial
+  String _housingType = 'Propia';
   String? _selectedProvince;
   String? _selectedCity;
-  String? _selectedMaritalStatus;
-  String? _selectedEducation;
-  String? _ref1Relation;
-  String? _ref2Relation;
-  
-  // Préstamo
-  double _monto = 5000;
-  int _plazo = 7;
-  String _formaPago = 'Semanal';
+  String _maritalStatus = 'Soltero/a';
+  String _educationLevel = 'Secundaria';
 
-  // Archivos
+  final Map<String, List<String>> _mexicoData = {
+    'CDMX': ['Benito Juárez', 'Coyoacán', 'Cuauhtémoc', 'Iztapalapa'],
+    'Jalisco': ['Guadalajara', 'Zapopan', 'Tlaquepaque', 'Tlajomulco'],
+    'Nuevo León': ['Monterrey', 'San Pedro', 'Guadalupe', 'Apodaca'],
+    'Estado de México': ['Toluca', 'Naucalpan', 'Ecatepec', 'Tlalnepantla'],
+    'Puebla': ['Puebla City', 'Cholula', 'Atlixco'],
+  };
+
+  // Seccion 3 - Referencias
+  String _ref1Relation = 'Padre/Madre';
+  String _ref1Name = '';
+  String _ref1Phone = '';
+  String _ref2Relation = 'Hermano/a';
+  String _ref2Name = '';
+  String _ref2Phone = '';
+
+  // Seccion 4 - Files
   File? _facePhoto;
-  File? _idFrontPhoto;
+  File? _idFront;
 
-  final _dobFormatter = MaskTextInputFormatter(mask: '##/##/####', filter: {"#": RegExp(r'[0-9]')});
-  final _dobController = TextEditingController();
+  // Seccion 5 - Prestamo
+  double _amount = 5000;
+  int _paymentTerm = 7;
+  String _paymentMethod = 'Semanal';
 
-  Future<void> _pickContact(int refNumber) async {
-    final permission = await Permission.contacts.request();
-    if (permission.isGranted) {
+  Future<void> _pickContact(int refNum) async {
+    if (await Permission.contacts.request().isGranted) {
       final contact = await FlutterContacts.openExternalPick();
-      if (contact != null && contact.phones.isNotEmpty) {
+      if (contact != null) {
+        final fullContact = await FlutterContacts.getContact(contact.id);
         setState(() {
-          if (refNumber == 1) {
-            _ref1NameController.text = contact.displayName;
-            _ref1PhoneController.text = contact.phones.first.number.replaceAll(RegExp(r'[^0-9]'), '');
+          if (refNum == 1) {
+            _ref1Name = fullContact?.displayName ?? '';
+            _ref1Phone = fullContact?.phones.firstOrNull?.number ?? '';
           } else {
-            _ref2NameController.text = contact.displayName;
-            _ref2PhoneController.text = contact.phones.first.number.replaceAll(RegExp(r'[^0-9]'), '');
+            _ref2Name = fullContact?.displayName ?? '';
+            _ref2Phone = fullContact?.phones.firstOrNull?.number ?? '';
           }
         });
       }
     } else {
-      _showError('Permiso de contactos denegado');
+      _showError('Se requiere permiso de contactos');
     }
   }
 
-  Future<void> _takePhoto(bool isFace) async {
-    final permission = await Permission.camera.request();
-    if (permission.isGranted) {
-      final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(
-        source: ImageSource.camera,
-        preferredCameraDevice: isFace ? CameraDevice.front : CameraDevice.rear,
-      );
-
-      if (pickedFile != null) {
-        setState(() {
-          if (isFace) _facePhoto = File(pickedFile.path);
-          else _idFrontPhoto = File(pickedFile.path);
-        });
+  Future<void> _pickImage(bool isFace) async {
+    final picker = ImagePicker();
+    if (isFace) {
+      if (await Permission.camera.request().isGranted) {
+        final pickedFile = await picker.pickImage(source: ImageSource.camera, preferredCameraDevice: CameraDevice.front);
+        if (pickedFile != null) setState(() => _facePhoto = File(pickedFile.path));
       }
     } else {
-      _showError('Permiso de cámara denegado');
+      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+      if (pickedFile != null) setState(() => _idFront = File(pickedFile.path));
     }
-  }
-
-  Future<void> _pickFromGallery() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        _idFrontPhoto = File(pickedFile.path);
-      });
-    }
-  }
-
-  void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
   }
 
   Future<String?> _uploadFile(File file, String folder) async {
     try {
-      final supabase = Supabase.instance.client;
       final userId = supabase.auth.currentUser!.id;
-      final fileName = '${userId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final fileExt = file.path.split('.').last;
+      final fileName = '${userId}_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
       final path = '$folder/$fileName';
 
       await supabase.storage.from('loan-files').upload(path, file);
@@ -135,44 +115,41 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
   }
 
   Future<void> _submitRequest() async {
-    if (_facePhoto == null || _idFrontPhoto == null) {
-      _showError('Por favor adjunta las fotos requeridas');
+    if (_facePhoto == null || _idFront == null) {
+      _showError('Debe adjuntar las fotos requeridas');
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      final supabase = Supabase.instance.client;
-      final userId = supabase.auth.currentUser!.id;
-
       final faceUrl = await _uploadFile(_facePhoto!, 'faces');
-      final idUrl = await _uploadFile(_idFrontPhoto!, 'ids');
+      final idUrl = await _uploadFile(_idFront!, 'ids');
 
       await supabase.from('loans').insert({
-        'user_id': userId,
-        'amount': _monto,
-        'payment_term': _plazo,
-        'payment_method': _formaPago,
+        'user_id': supabase.auth.currentUser!.id,
+        'amount': _amount,
+        'payment_term': _paymentTerm,
+        'payment_method': _paymentMethod,
         'first_name': _firstNameController.text,
         'last_name': _lastNameController.text,
-        'gender': _selectedGender,
+        'gender': _gender,
         'dob': _dobController.text,
         'doc_number': _docNumberController.text,
         'account_number': _accountNumberController.text,
         'email': _emailController.text,
         'address': _addressController.text,
-        'housing_type': _selectedHousing,
+        'housing_type': _housingType,
         'province': _selectedProvince,
         'city': _selectedCity,
-        'marital_status': _selectedMaritalStatus,
-        'education_level': _selectedEducation,
+        'marital_status': _maritalStatus,
+        'education_level': _educationLevel,
         'ref1_relation': _ref1Relation,
-        'ref1_name': _ref1NameController.text,
-        'ref1_phone': _ref1PhoneController.text,
+        'ref1_name': _ref1Name,
+        'ref1_phone': _ref1Phone,
         'ref2_relation': _ref2Relation,
-        'ref2_name': _ref2NameController.text,
-        'ref2_phone': _ref2PhoneController.text,
+        'ref2_name': _ref2Name,
+        'ref2_phone': _ref2Phone,
         'face_photo_url': faceUrl,
         'id_front_url': idUrl,
         'status': 'pending',
@@ -182,10 +159,14 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
         context.go('/prestamos');
       }
     } catch (e) {
-      _showError('Error al procesar la solicitud: $e');
+      _showError('Error al enviar la solicitud: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
@@ -193,19 +174,15 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Solicitar Préstamo', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text('Solicitud de Préstamo'),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => context.pop(),
-        ),
       ),
       body: _isLoading 
         ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
         : Theme(
-            data: Theme.of(context).copyWith(
-              colorScheme: ColorScheme.light(primary: AppColors.primary),
+            data: ThemeData.dark().copyWith(
+              colorScheme: const ColorScheme.dark(primary: AppColors.primary),
             ),
             child: Stepper(
               type: StepperType.horizontal,
@@ -221,219 +198,177 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
                 if (_currentStep > 0) setState(() => _currentStep -= 1);
               },
               steps: [
-                Step(
-                  isActive: _currentStep >= 0,
-                  title: const Text(''),
-                  label: const Text('Perfil', style: TextStyle(fontSize: 10, color: Colors.white)),
-                  content: _buildStepPerfil(),
-                ),
-                Step(
-                  isActive: _currentStep >= 1,
-                  title: const Text(''),
-                  label: const Text('Ubicación', style: TextStyle(fontSize: 10, color: Colors.white)),
-                  content: _buildStepInicial(),
-                ),
-                Step(
-                  isActive: _currentStep >= 2,
-                  title: const Text(''),
-                  label: const Text('Referencias', style: TextStyle(fontSize: 10, color: Colors.white)),
-                  content: _buildStepReferencias(),
-                ),
-                Step(
-                  isActive: _currentStep >= 3,
-                  title: const Text(''),
-                  label: const Text('Archivos', style: TextStyle(fontSize: 10, color: Colors.white)),
-                  content: _buildStepFiles(),
-                ),
-                Step(
-                  isActive: _currentStep >= 4,
-                  title: const Text(''),
-                  label: const Text('Préstamo', style: TextStyle(fontSize: 10, color: Colors.white)),
-                  content: _buildStepPrestamo(),
-                ),
+                _buildStepProfile(),
+                _buildStepInitial(),
+                _buildStepReferences(),
+                _buildStepFiles(),
+                _buildStepLoan(),
               ],
             ),
           ),
     );
   }
 
-  Widget _buildStepPerfil() {
-    return Column(
-      children: [
-        _buildTextField('Nombres', _firstNameController),
-        _buildTextField('Apellidos', _lastNameController),
-        _buildDropdown('Género', ['Masculino', 'Femenino'], _selectedGender, (val) => setState(() => _selectedGender = val)),
-        _buildTextField('Fecha de nacimiento (DD/MM/AAAA)', _dobController, formatter: _dobFormatter),
-        _buildTextField('Número de documento', _docNumberController, isNumber: true),
-        _buildTextField('Número de cuenta', _accountNumberController, isNumber: true),
-        _buildTextField('Correo electrónico', _emailController, keyboardType: TextInputType.emailAddress),
-        _buildTextField('Dirección Domicilio', _addressController),
-      ],
-    );
-  }
-
-  Widget _buildStepInicial() {
-    return Column(
-      children: [
-        _buildDropdown('Tipo de Vivienda', ['Otros', 'Renta', 'Propia'], _selectedHousing, (val) => setState(() => _selectedHousing = val)),
-        _buildDropdown('Estado', _mexicoData.keys.toList(), _selectedProvince, (val) {
-          setState(() {
-            _selectedProvince = val;
-            _selectedCity = null; // Reset ciudad al cambiar estado
-          });
-        }),
-        if (_selectedProvince != null)
-          _buildDropdown('Ciudad', _mexicoData[_selectedProvince]!, _selectedCity, (val) => setState(() => _selectedCity = val)),
-        _buildDropdown('Estado Civil', ['Soltero/a', 'Casado/a', 'Divorciado/a', 'Viudo/a', 'Unión Libre'], _selectedMaritalStatus, (val) => setState(() => _selectedMaritalStatus = val)),
-        _buildDropdown('Nivel de Estudios', ['Primaria', 'Secundaria', 'Preparatoria', 'Licenciatura', 'Postgrado'], _selectedEducation, (val) => setState(() => _selectedEducation = val)),
-      ],
-    );
-  }
-
-  Widget _buildStepReferencias() {
-    final relations = ['Padre/Madre', 'Hermano/a', 'Compañero Trabajo', 'Amigo/a', 'Cónyuge', 'Otro'];
-    return Column(
-      children: [
-        const Text('Referencia 1', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        _buildDropdown('Relación', relations, _ref1Relation, (val) => setState(() => _ref1Relation = val)),
-        _buildContactField(_ref1NameController, _ref1PhoneController, () => _pickContact(1)),
-        const Divider(color: Colors.white24, height: 40),
-        const Text('Referencia 2', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        _buildDropdown('Relación', relations, _ref2Relation, (val) => setState(() => _ref2Relation = val)),
-        _buildContactField(_ref2NameController, _ref2PhoneController, () => _pickContact(2)),
-      ],
-    );
-  }
-
-  Widget _buildStepFiles() {
-    return Column(
-      children: [
-        _buildFileCard('Foto de rostro', Icons.face, _facePhoto, () => _takePhoto(true)),
-        const SizedBox(height: 20),
-        _buildFileCard('Foto frontal de identificación', Icons.badge, _idFrontPhoto, () => _takePhoto(false), onGallery: _pickFromGallery),
-      ],
-    );
-  }
-
-  Widget _buildStepPrestamo() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Monto del préstamo', style: TextStyle(color: Colors.white, fontSize: 16)),
-        Slider(
-          value: _monto,
-          min: 500,
-          max: 50000,
-          divisions: 99,
-          label: '\$${_monto.toInt()}',
-          onChanged: (val) => setState(() => _monto = val),
-        ),
-        Center(child: Text('\$${_monto.toInt()} MXN', style: const TextStyle(color: AppColors.primary, fontSize: 24, fontWeight: FontWeight.bold))),
-        const SizedBox(height: 20),
-        const Text('Plazo de pago (días)', style: TextStyle(color: Colors.white)),
-        _buildDropdown('Selecciona el plazo', ['7', '15', '30'], _plazo.toString(), (val) => setState(() => _plazo = int.parse(val!))),
-        const SizedBox(height: 20),
-        const Text('Forma de pago', style: TextStyle(color: Colors.white)),
-        _buildDropdown('Selecciona la forma', ['Diario', 'Semanal', 'Quincenal'], _formaPago, (val) => setState(() => _formaPago = val!)),
-      ],
-    );
-  }
-
-  // Widgets Auxiliares
-  Widget _buildTextField(String label, TextEditingController controller, {TextInputFormatter? formatter, bool isNumber = false, TextInputType? keyboardType}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextFormField(
-        controller: controller,
-        inputFormatters: [
-          if (formatter != null) formatter,
-          if (isNumber) FilteringTextInputFormatter.digitsOnly,
+  Step _buildStepProfile() {
+    return Step(
+      title: const Text('Perfil', style: TextStyle(fontSize: 10)),
+      isActive: _currentStep >= 0,
+      content: Column(
+        children: [
+          _buildTextField(_firstNameController, 'Nombres'),
+          _buildTextField(_lastNameController, 'Apellidos'),
+          _buildDropdown('Género', _gender, ['Masculino', 'Femenino'], (val) => setState(() => _gender = val!)),
+          _buildTextField(_dobController, 'Fecha Nacimiento (DD/MM/AAAA)', inputFormatters: [_dobMask]),
+          _buildTextField(_docNumberController, 'Número Documento', keyboardType: TextInputType.number),
+          _buildTextField(_accountNumberController, 'Número de Cuenta', keyboardType: TextInputType.number),
+          _buildTextField(_emailController, 'Correo Electrónico', keyboardType: TextInputType.emailAddress),
+          _buildTextField(_addressController, 'Dirección Domicilio'),
         ],
-        keyboardType: isNumber ? TextInputType.number : keyboardType,
-        style: const TextStyle(color: Colors.white),
+      ),
+    );
+  }
+
+  Step _buildStepInitial() {
+    return Step(
+      title: const Text('Inicial', style: TextStyle(fontSize: 10)),
+      isActive: _currentStep >= 1,
+      content: Column(
+        children: [
+          _buildDropdown('Tipo de Vivienda', _housingType, ['Propia', 'Renta', 'Otros'], (val) => setState(() => _housingType = val!)),
+          _buildDropdown('Estado', _selectedProvince, _mexicoData.keys.toList(), (val) {
+            setState(() {
+              _selectedProvince = val;
+              _selectedCity = null;
+            });
+          }),
+          _buildDropdown('Ciudad', _selectedCity, _selectedProvince != null ? _mexicoData[_selectedProvince]! : [], (val) => setState(() => _selectedCity = val)),
+          _buildDropdown('Estado Civil', _maritalStatus, ['Soltero/a', 'Casado/a', 'Divorciado/a', 'Viudo/a'], (val) => setState(() => _maritalStatus = val!)),
+          _buildDropdown('Nivel Estudios', _educationLevel, ['Primaria', 'Secundaria', 'Preparatoria', 'Universidad', 'Postgrado'], (val) => setState(() => _educationLevel = val!)),
+        ],
+      ),
+    );
+  }
+
+  Step _buildStepReferences() {
+    return Step(
+      title: const Text('Referencias', style: TextStyle(fontSize: 10)),
+      isActive: _currentStep >= 2,
+      content: Column(
+        children: [
+          _buildDropdown('Relación 1', _ref1Relation, ['Padre/Madre', 'Hermano/a', 'Compañero Trabajo', 'Amigo/a'], (val) => setState(() => _ref1Relation = val!)),
+          _buildContactTile(1, _ref1Name, _ref1Phone),
+          const Divider(height: 32),
+          _buildDropdown('Relación 2', _ref2Relation, ['Padre/Madre', 'Hermano/a', 'Compañero Trabajo', 'Amigo/a'], (val) => setState(() => _ref2Relation = val!)),
+          _buildContactTile(2, _ref2Name, _ref2Phone),
+        ],
+      ),
+    );
+  }
+
+  Step _buildStepFiles() {
+    return Step(
+      title: const Text('Archivos', style: TextStyle(fontSize: 10)),
+      isActive: _currentStep >= 3,
+      content: Column(
+        children: [
+          _buildFilePicker('Tomar foto de rostro', _facePhoto, () => _pickImage(true), Icons.face),
+          const SizedBox(height: 20),
+          _buildFilePicker('Adjuntar frontal cédula', _idFront, () => _pickImage(false), Icons.credit_card),
+        ],
+      ),
+    );
+  }
+
+  Step _buildStepLoan() {
+    return Step(
+      title: const Text('Préstamo', style: TextStyle(fontSize: 10)),
+      isActive: _currentStep >= 4,
+      content: Column(
+        children: [
+          const Text('¿Cuánto dinero necesitas?', style: TextStyle(color: Colors.white, fontSize: 18)),
+          const SizedBox(height: 20),
+          Text('\$${_amount.toInt()} MXN', style: const TextStyle(color: AppColors.primary, fontSize: 32, fontWeight: FontWeight.bold)),
+          Slider(
+            value: _amount,
+            min: 500,
+            max: 50500,
+            divisions: 100,
+            label: '\$${_amount.toInt()}',
+            onChanged: (val) => setState(() => _amount = (val / 500).round() * 500.0),
+          ),
+          _buildDropdown('Plazo de Pago', _paymentTerm.toString(), ['7', '15', '30'], (val) => setState(() => _paymentTerm = int.parse(val!))),
+          _buildDropdown('Forma de Pago', _paymentMethod, ['Diario', 'Semanal', 'Quincenal', 'Mensual'], (val) => setState(() => _paymentMethod = val!)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String label, {TextInputType? keyboardType, List<TextInputFormatter>? inputFormatters}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        inputFormatters: [
+          if (keyboardType == TextInputType.number) FilteringTextInputFormatter.digitsOnly,
+          ...?inputFormatters,
+        ],
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(color: Colors.white70),
           filled: true,
           fillColor: Colors.white.withOpacity(0.05),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
     );
   }
 
-  Widget _buildDropdown(String label, List<String> options, String? value, Function(String?) onChanged) {
+  Widget _buildDropdown(String label, String? value, List<String> items, Function(String?) onChanged) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 16),
       child: DropdownButtonFormField<String>(
-        value: value,
-        dropdownColor: AppColors.background,
-        style: const TextStyle(color: Colors.white),
+        value: items.contains(value) ? value : null,
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(color: Colors.white70),
           filled: true,
           fillColor: Colors.white.withOpacity(0.05),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        items: options.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+        items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
         onChanged: onChanged,
       ),
     );
   }
 
-  Widget _buildContactField(TextEditingController name, TextEditingController phone, VoidCallback onPick) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(child: _buildTextField('Nombre', name)),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.contact_phone, color: AppColors.primary),
-              onPressed: onPick,
-            ),
-          ],
-        ),
-        _buildTextField('Teléfono', phone, isNumber: true),
-      ],
+  Widget _buildContactTile(int refNum, String name, String phone) {
+    return ListTile(
+      title: Text(name.isEmpty ? 'Seleccionar Contacto' : name),
+      subtitle: Text(phone.isEmpty ? 'Haz clic para abrir agenda' : phone),
+      leading: const Icon(Icons.person_add, color: AppColors.primary),
+      onTap: () => _pickContact(refNum),
+      tileColor: Colors.white.withOpacity(0.05),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     );
   }
 
-  Widget _buildFileCard(String label, IconData icon, File? file, VoidCallback onCamera, {VoidCallback? onGallery}) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
-      child: Column(
-        children: [
-          Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          if (file != null)
-            ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.file(file, height: 150, width: double.infinity, fit: BoxFit.cover))
-          else
-            Icon(icon, size: 60, color: Colors.white24),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ElevatedButton.icon(
-                onPressed: onCamera,
-                icon: const Icon(Icons.camera_alt),
-                label: const Text('Cámara'),
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.black),
-              ),
-              if (onGallery != null) ...[
-                const SizedBox(width: 12),
-                OutlinedButton.icon(
-                  onPressed: onGallery,
-                  icon: const Icon(Icons.photo_library),
-                  label: const Text('Galería'),
-                  style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white24)),
-                ),
-              ],
-            ],
-          ),
-        ],
+  Widget _buildFilePicker(String label, File? file, VoidCallback onTap, IconData icon) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: file != null ? AppColors.primary : Colors.white12),
+        ),
+        child: Column(
+          children: [
+            Icon(file != null ? Icons.check_circle : icon, size: 40, color: file != null ? AppColors.primary : Colors.white30),
+            const SizedBox(height: 8),
+            Text(file != null ? '¡Archivo listo!' : label),
+          ],
+        ),
       ),
     );
   }
