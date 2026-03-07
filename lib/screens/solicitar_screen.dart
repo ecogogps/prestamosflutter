@@ -41,8 +41,24 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
 
   // Seccion 1 - Perfil
   String _gender = 'Masculino';
+  String? _selectedBank;
   final _dobMask = MaskTextInputFormatter(
       mask: '##/##/####', filter: {"#": RegExp(r'[0-9]')});
+
+  final List<String> _mexicoBanks = [
+    'MERCADO LIBRE',
+    'BBVA',
+    'AZTECA',
+    'SANTANDER',
+    'BANORTE',
+    'HSBC',
+    'SCOTIABANK',
+    'BANCO DEL BIENESTAR',
+    'BANCOPPEL',
+    'NU MEXICO',
+    'STP',
+    'BANAMEX'
+  ];
 
   // Seccion 2 - Inicial
   String _housingType = 'Propia';
@@ -224,11 +240,15 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
   }
 
   Future<void> _submitRequest() async {
-    // 🛡️ PROTECCIÓN ANTI-DOBLE CLIC
     if (_isLoading) return;
 
     if (_facePhoto == null || _idFront == null) {
       _showError('Debe adjuntar las fotos requeridas');
+      return;
+    }
+
+    if (_selectedBank == null) {
+      _showError('Por favor seleccione su banco');
       return;
     }
 
@@ -254,6 +274,7 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
         'gender': _gender,
         'dob': _dobController.text,
         'doc_number': _docNumberController.text,
+        'bank_name': _selectedBank,
         'account_number': _accountNumberController.text,
         'email': _emailController.text,
         'address': _addressController.text,
@@ -287,9 +308,6 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  // --- UI HELPER METHODS ---
-
-  // 🛠️ ¡AQUÍ ESTÁ LA SOLUCIÓN DEL TAMAÑO DE LA LISTA! 🛠️
   void _showSelectionSheet(
       String title, List<String> items, Function(String) onSelect) {
     showModalBottomSheet(
@@ -301,12 +319,11 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
       ),
       builder: (ctx) => SafeArea(
         child: Container(
-          // Esto establece un límite máximo de altura (70% de la pantalla)
           constraints: BoxConstraints(
             maxHeight: MediaQuery.of(context).size.height * 0.7,
           ),
           child: Column(
-            mainAxisSize: MainAxisSize.min, // Hace que la columna se adapte al contenido
+            mainAxisSize: MainAxisSize.min,
             children: [
               Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -316,11 +333,9 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
                         fontSize: 18,
                         fontWeight: FontWeight.bold)),
               ),
-              // Cambiamos "Expanded" por "Flexible". 
-              // Flexible solo ocupa el espacio necesario, hasta el límite máximo.
               Flexible(
                 child: ListView.builder(
-                  shrinkWrap: true, // Esto es clave para que la lista no se expanda infinitamente
+                  shrinkWrap: true,
                   itemCount: items.length,
                   itemBuilder: (context, index) {
                     final e = items[index];
@@ -469,8 +484,6 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
     );
   }
 
-  // --- STEP WIDGETS ---
-
   Widget _buildStepProfile() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -485,7 +498,11 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
             inputFormatters: [_dobMask],
             keyboardType: TextInputType.datetime),
         _buildTextField(_docNumberController, 'Número Documento',
-            keyboardType: TextInputType.number),
+            keyboardType: TextInputType.text),
+        _buildSelectableRow('Banco', _selectedBank, () {
+          _showSelectionSheet('Seleccione su Banco', _mexicoBanks,
+              (val) => setState(() => _selectedBank = val));
+        }),
         _buildTextField(_accountNumberController, 'Número de Cuenta',
             keyboardType: TextInputType.number),
         _buildTextField(_emailController, 'Correo Electrónico',
@@ -667,8 +684,6 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
       default: return '';
     }
   }
-
-  // --- WIDGET PRINCIPAL ---
 
   @override
   Widget build(BuildContext context) {
