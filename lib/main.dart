@@ -9,7 +9,7 @@ import 'screens/home_screen.dart';
 import 'screens/solicitar_screen.dart';
 import 'screens/prestamos_screen.dart';
 import 'screens/perfil_screen.dart';
-import 'widgets/main_navigation.dart';
+import 'screens/loan_details_screen.dart';
 import 'core/app_colors.dart';
 
 void main() async {
@@ -49,7 +49,45 @@ class MyApp extends StatelessWidget {
         return null;
       },
       routes: [
-        // Rutas sin Navbar (Auth)
+        ShellRoute(
+          builder: (context, state, child) {
+            return Scaffold(
+              body: child,
+              bottomNavigationBar: state.matchedLocation == '/login' || state.matchedLocation == '/otp' || state.matchedLocation.startsWith('/loan-details')
+                  ? null
+                  : SafeArea(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF181B1F),
+                          border: Border(top: BorderSide(color: Colors.white.withOpacity(0.05))),
+                        ),
+                        child: NavigationBar(
+                          backgroundColor: Colors.transparent,
+                          indicatorColor: const Color(0xFF71AF57).withOpacity(0.2),
+                          selectedIndex: _getSelectedIndex(state.matchedLocation),
+                          onDestinationSelected: (index) {
+                            switch (index) {
+                              case 0: context.go('/'); break;
+                              case 1: context.go('/prestamos'); break;
+                              case 2: context.go('/perfil'); break;
+                            }
+                          },
+                          destinations: const [
+                            NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home, color: Color(0xFF71AF57)), label: 'Inicio'),
+                            NavigationDestination(icon: Icon(Icons.account_balance_wallet_outlined), selectedIcon: Icon(Icons.account_balance_wallet, color: Color(0xFF71AF57)), label: 'Préstamos'),
+                            NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person, color: Color(0xFF71AF57)), label: 'Perfil'),
+                          ],
+                        ),
+                      ),
+                    ),
+            );
+          },
+          routes: [
+            GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
+            GoRoute(path: '/prestamos', builder: (context, state) => const PrestamosScreen()),
+            GoRoute(path: '/perfil', builder: (context, state) => const PerfilScreen()),
+          ],
+        ),
         GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
         GoRoute(
           path: '/otp',
@@ -58,16 +96,13 @@ class MyApp extends StatelessWidget {
             return OtpScreen(phoneNumber: phone);
           },
         ),
-        
-        // ShellRoute para pantallas con Navbar
-        ShellRoute(
-          builder: (context, state, child) => MainNavigation(child: child),
-          routes: [
-            GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
-            GoRoute(path: '/prestamos', builder: (context, state) => const PrestamosScreen()),
-            GoRoute(path: '/perfil', builder: (context, state) => const PerfilScreen()),
-            GoRoute(path: '/solicitar', builder: (context, state) => const SolicitarScreen()),
-          ],
+        GoRoute(path: '/solicitar', builder: (context, state) => const SolicitarScreen()),
+        GoRoute(
+          path: '/loan-details',
+          builder: (context, state) {
+            final loan = state.extra as Map<String, dynamic>;
+            return LoanDetailsScreen(loan: loan);
+          },
         ),
       ],
     );
@@ -78,16 +113,22 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        primaryColor: AppColors.primary,
-        scaffoldBackgroundColor: AppColors.background,
+        primaryColor: const Color(0xFF71AF57),
+        scaffoldBackgroundColor: const Color(0xFF181B1F),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.primary,
+          seedColor: const Color(0xFF71AF57),
           brightness: Brightness.dark,
-          primary: AppColors.primary,
-          surface: AppColors.background,
+          primary: const Color(0xFF71AF57),
         ),
       ),
       routerConfig: router,
     );
+  }
+
+  int _getSelectedIndex(String location) {
+    if (location == '/') return 0;
+    if (location == '/prestamos') return 1;
+    if (location == '/perfil') return 2;
+    return 0;
   }
 }
