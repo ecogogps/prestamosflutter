@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
@@ -79,7 +80,21 @@ class _PrestamosScreenState extends State<PrestamosScreen> {
             itemCount: loans.length,
             itemBuilder: (context, index) {
               final loan = loans[index];
-              return _buildLoanCard(loan);
+              final amount = loan['amount'] ?? 0;
+              final status = loan['status'] ?? 'pending';
+              final term = loan['payment_term']?.toString() ?? '0';
+              final method = loan['payment_method'] ?? 'N/A';
+              final createdAt = loan['created_at'] != null 
+                  ? DateTime.parse(loan['created_at']) 
+                  : DateTime.now();
+
+              return InkWell(
+                onTap: status == 'accepted' 
+                  ? () => context.push('/loan-details', extra: loan) 
+                  : null,
+                borderRadius: BorderRadius.circular(20),
+                child: _buildLoanCard(amount, status, term, method, createdAt),
+              );
             },
           );
         },
@@ -87,15 +102,7 @@ class _PrestamosScreenState extends State<PrestamosScreen> {
     );
   }
 
-  Widget _buildLoanCard(Map<String, dynamic> loan) {
-    final amount = loan['amount'] ?? 0;
-    final status = loan['status'] ?? 'pending';
-    final term = loan['payment_term']?.toString() ?? '0';
-    final method = loan['payment_method'] ?? 'N/A';
-    final createdAt = loan['created_at'] != null 
-        ? DateTime.parse(loan['created_at']) 
-        : DateTime.now();
-
+  Widget _buildLoanCard(dynamic amount, String status, String term, String method, DateTime date) {
     Color statusColor;
     String statusText;
 
@@ -121,73 +128,73 @@ class _PrestamosScreenState extends State<PrestamosScreen> {
         statusText = 'PENDIENTE';
     }
 
-    final formattedDate = DateFormat('dd/MM/yyyy').format(date: createdAt); 
+    final formattedDate = DateFormat('dd/MM/yyyy').format(date); 
 
-    return InkWell(
-      onTap: status == 'accepted' 
-          ? () => context.push('/loan-details', extra: loan)
-          : null,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: status == 'accepted' ? AppColors.primary.withOpacity(0.3) : Colors.white.withOpacity(0.1)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '\$${NumberFormat("#,##0", "es_MX").format(amount)} MXN',
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '\$${NumberFormat("#,##0", "es_MX").format(amount)} MXN',
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: statusColor.withOpacity(0.5)),
-                  ),
-                  child: Text(
-                    statusText,
-                    style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
-                  ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: statusColor.withOpacity(0.5)),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                _buildDetailItem(Icons.calendar_today, 'Plazo', '$term días'),
-                const SizedBox(width: 24),
-                _buildDetailItem(Icons.payments, 'Pago', method),
-              ],
-            ),
-            const Divider(color: Colors.white10, height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  formattedDate,
-                  style: const TextStyle(color: Colors.white38, fontSize: 12),
+                child: Text(
+                  statusText,
+                  style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
                 ),
-                if (status == 'accepted')
-                  const Text('Ver detalles >', style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.bold))
-                else
-                  const Icon(Icons.arrow_forward_ios, color: Colors.white24, size: 12),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              _buildDetailItem(Icons.calendar_today, 'Plazo', '$term días'),
+              const SizedBox(width: 24),
+              _buildDetailItem(Icons.payments, 'Pago', method),
+            ],
+          ),
+          const Divider(color: Colors.white10, height: 32),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                formattedDate,
+                style: const TextStyle(color: Colors.white38, fontSize: 12),
+              ),
+              if (status == 'accepted')
+                const Row(
+                  children: [
+                    Text('Ver detalles', style: TextStyle(color: AppColors.primary, fontSize: 12)),
+                    SizedBox(width: 4),
+                    Icon(Icons.arrow_forward_ios, color: AppColors.primary, size: 12),
+                  ],
+                )
+              else
+                const Icon(Icons.arrow_forward_ios, color: Colors.white24, size: 12),
+            ],
+          ),
+        ],
       ),
     );
   }
