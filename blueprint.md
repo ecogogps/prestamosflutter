@@ -6,25 +6,19 @@ Aplicación móvil financiera para la gestión de solicitudes, con autenticació
 
 ## Style, Design, and Features
 
-### v1.9 - Ajustes Finales de UI y Auth
-- **Auth:** Validación estricta de 10 dígitos para números de México (+52) para asegurar compatibilidad con Twilio.
-- **Home UI:** Header minimalista con botón de logout, logo mediano y visualización de saldo destacado.
-- **Colores:** Mantenimiento de la identidad visual oscura con acentos verde lima (#8BF724).
+### v2.1 - Cálculos en Servidor (RPC)
+- **Lógica Financiera:** Los cálculos de intereses (40%), montos recibidos (60%) y penalizaciones por mora (5% diario) se han migrado a una función PostgreSQL (`get_loan_details`) en Supabase.
+- **Seguridad:** El cliente ya no realiza cálculos críticos; solo muestra la información calculada por el servidor, lo que previene manipulaciones.
+- **Detalles:** Visualización dinámica de estados (Vencido) y desgloses precisos de montos.
 
-### v1.8 - Autenticación SMS (México)
-- **Configuración:** Cambiado el prefijo regional a +52.
-- **Validación de Input:** Restringido a 10 dígitos numéricos para cumplir con el estándar de marcación móvil en México.
-- **Flujo OTP:** Mantenimiento del flujo Login (Teléfono) -> Verificación (OTP 6 dígitos).
-
-### v1.7 - Flujo OTP de 6 dígitos
-- **Navegación:** Implementado flujo `Login -> OTP -> Home`.
-- **OTP Screen:** Pantalla dedicada para el ingreso del código de 6 dígitos enviado por SMS.
-- **Validación:** El código ingresado se verifica mediante `Supabase.auth.verifyOTP`.
+### v2.0 - UI Premium y Cámara
+- **Home UI:** Efectos de resplandor radial (glow) y reflejos brillantes en tarjetas para una estética fintech premium.
+- **Cámara:** Pantalla de cámara personalizada con guías visuales para capturar rostros y documentos de identidad.
+- **Multiform:** Stepper horizontal para la solicitud de préstamos con selección de bancos de México.
 
 ### v1.4 - Identidad Visual MoneyBic
 - **Colores Globales:**
-  - Fondo: `#212529`
-  - Primario: `#8BF724` (Verde Lima)
+  - Fondo: `#181B1F` (Darker)
+  - Primario: `#71AF57` (Green)
   - Texto: `#FFFFFF`
-- **Logo:** `https://i.postimg.cc/tTDNDSfZ/MONEYBIC-SIN-FONDO.png`
-- **UI:** Estilo oscuro moderno con componentes de alta visibilidad.
+- **Logo:** `https://i.postimg.cc/Jzd6XVzQ/MONEYBIC-LOGO.png`
