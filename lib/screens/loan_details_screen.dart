@@ -93,7 +93,7 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
-            mainAxisAlignment: Main => MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
               const SizedBox(height: 16),
@@ -124,7 +124,9 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
     final bool isOverdue = d['is_overdue'] == true;
     final int delayDays = d['delay_days'] as int;
     final double lateInterest = (d['late_interest'] as num).toDouble();
-    final double requestedAmount = (d['requested_amount'] as num).toDouble();
+    
+    // El beneficio de condonación aparece si hay 5 o más días de mora
+    final bool showCondonation = delayDays >= 5;
 
     return SingleChildScrollView(
       child: Column(
@@ -173,7 +175,7 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _buildHeaderItem(
-                      '\$${currencyFormat.format(requestedAmount)}',
+                      '\$${currencyFormat.format(d['requested_amount'])}',
                       'Monto de\npréstamo',
                     ),
                     _buildHeaderItem(
@@ -190,7 +192,9 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
               ],
             ),
           ),
+
           const SizedBox(height: 10),
+
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 20),
             width: double.infinity,
@@ -206,77 +210,82 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
                 const Text('Detalles',
                     style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 24),
+
                 _buildDetailRow('Plazo del préstamo', '${d['payment_term']} días'),
                 _buildDetailRow('Forma de pago', d['payment_method']),
                 _buildDetailRow('Monto recibido', '\$${currencyFormat.format(d['amount_received'])}'),
+
                 const SizedBox(height: 16),
                 const Divider(color: Colors.white12),
                 const SizedBox(height: 16),
+
                 _buildDetailRow('Interés total', '\$${currencyFormat.format(d['total_interest'])}'),
+
                 if (lateInterest > 0)
                   _buildDetailRow(
                     'Mora ($delayDays días · 5%/día)',
                     '+\$${currencyFormat.format(lateInterest)}',
                     isNegative: true,
                   ),
+
                 _buildDetailRow(
                   'Monto a pagar',
                   '\$${currencyFormat.format(d['total_to_pay'])}',
                   isBold: true,
                 ),
+
                 const SizedBox(height: 16),
                 const Divider(color: Colors.white12),
                 const SizedBox(height: 16),
+
                 _buildDetailRow('Fecha de desembolso', dateFormat.format(disbursementDate)),
                 _buildDetailRow('Fecha de vencimiento', dateFormat.format(expirationDate),
                     isNegative: isOverdue),
               ],
             ),
           ),
+
           const SizedBox(height: 30),
+
+          // BOTONES DE ACCIÓN
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                if (delayDays >= 5)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 54,
-                      child: OutlinedButton(
-                        onPressed: () {
-                          final initialTotal = (d['amount_received'] as num).toDouble() +
-                              (d['total_interest'] as num).toDouble();
-                          final promoData = Map<String, dynamic>.from(d);
-                          promoData['total_to_pay'] = initialTotal;
-                          _showRefundModal(context, promoData, isPromo: true);
-                        },
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: AppColors.primary),
-                          foregroundColor: AppColors.primary,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        ),
-                        child: const Text('Pagar préstamo sin intereses por mora',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                if (showCondonation) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: ElevatedButton(
+                      onPressed: () => _showRefundModal(context, d, useCondonation: true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: AppColors.primary,
+                        side: const BorderSide(color: AppColors.primary, width: 2),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
+                      child: const Text('Pagar préstamo sin intereses por mora',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                     ),
                   ),
-                SizedBox(
-                  width: 160,
-                  height: 54,
-                  child: ElevatedButton(
-                    onPressed: () => _showRefundModal(context, d),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 0,
+                  const SizedBox(height: 12),
+                ],
+                Align(
+                  alignment: Alignment.bottomRight,
+                  child: SizedBox(
+                    width: 160,
+                    height: 54,
+                    child: ElevatedButton(
+                      onPressed: () => _showRefundModal(context, d, useCondonation: false),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      child: const Text('Reembolso',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
-                    child: const Text('Reembolso',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
@@ -327,8 +336,12 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
     );
   }
 
-  void _showRefundModal(BuildContext context, Map<String, dynamic> d, {bool isPromo = false}) {
+  void _showRefundModal(BuildContext context, Map<String, dynamic> d, {bool useCondonation = false}) {
     final currencyFormat = NumberFormat("#,##0.00", "es_MX");
+    
+    // Si se usa condonación, el monto es el total inicial (Monto + Interés 40%) sin la mora
+    final initialTotal = (d['amount_received'] as num).toDouble() + (d['total_interest'] as num).toDouble();
+    final totalToPay = useCondonation ? initialTotal : (d['total_to_pay'] as num).toDouble();
 
     showModalBottomSheet(
       context: context,
@@ -345,30 +358,21 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Información de Pago',
-                        style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                    if (isPromo)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.primary),
-                        ),
-                        child: const Text('CERO MORA',
-                            style: TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold)),
-                      ),
-                  ],
-                ),
+                const Text('Información de Pago',
+                    style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 Text(
-                  'Total a pagar: \$${currencyFormat.format(d['total_to_pay'])} MXN',
-                  style: const TextStyle(color: Colors.white54, fontSize: 14),
+                  'Total a pagar: \$${currencyFormat.format(totalToPay)} MXN',
+                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                 ),
+                if (useCondonation)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 4),
+                    child: Text('¡Intereses por mora condonados!', 
+                      style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.bold)),
+                  ),
                 const SizedBox(height: 24),
+
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -406,13 +410,16 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
+
                 const Text('Banco MERCADO PAGO (STP)',
                     style: TextStyle(
                         color: AppColors.primary, fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 32),
+
                 const Text('¿Cómo realizar la transferencia?',
                     style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
+
                 _buildInstructionItem('1. Copia la clave de pago.'),
                 _buildInstructionItem('2. Dirige a cualquier banca móvil de tu preferencia.'),
                 _buildInstructionItem(
