@@ -1,8 +1,6 @@
-
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
-import 'package:go_router/go_router.dart';
 import '../core/app_colors.dart';
 
 class PrestamosScreen extends StatefulWidget {
@@ -19,86 +17,107 @@ class _PrestamosScreenState extends State<PrestamosScreen> {
   Widget build(BuildContext context) {
     final userId = supabase.auth.currentUser?.id;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Mis Préstamos', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-      ),
-      body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: supabase
-            .from('loans')
-            .stream(primaryKey: ['id'])
-            .eq('user_id', userId ?? '')
-            .order('created_at', ascending: false),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: AppColors.primary));
-          }
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          title: const Text('Mis Préstamos', style: TextStyle(fontWeight: FontWeight.bold)),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          centerTitle: true,
+          bottom: const TabBar(
+            indicatorColor: AppColors.primary,
+            labelColor: AppColors.primary,
+            unselectedLabelColor: Colors.white54,
+            tabs: [
+              Tab(text: 'Préstamo Actual'),
+              Tab(text: 'Préstamo Histórico'),
+            ],
+          ),
+        ),
+        body: StreamBuilder<List<Map<String, dynamic>>>(
+          stream: supabase
+              .from('loans')
+              .stream(primaryKey: ['id'])
+              .eq('user_id', userId ?? '')
+              .order('created_at', ascending: false),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+            }
 
-          if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Error al cargar préstamos: ${snapshot.error}',
-                style: const TextStyle(color: Colors.red),
-              ),
-            );
-          }
-
-          final loans = snapshot.data ?? [];
-
-          if (loans.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.account_balance_wallet_outlined, size: 80, color: Colors.white.withOpacity(0.2)),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'No tienes solicitudes aún',
-                    style: TextStyle(color: Colors.white70, fontSize: 18),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () => context.push('/solicitar'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('Solicitar Préstamo'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: loans.length,
-            itemBuilder: (context, index) {
-              final loan = loans[index];
-              final amount = loan['amount'] ?? 0;
-              final status = loan['status'] ?? 'pending';
-              final term = loan['payment_term']?.toString() ?? '0';
-              final method = loan['payment_method'] ?? 'N/A';
-              final createdAt = loan['created_at'] != null 
-                  ? DateTime.parse(loan['created_at']) 
-                  : DateTime.now();
-
-              return InkWell(
-                onTap: status == 'accepted' 
-                  ? () => context.push('/loan-details', extra: loan) 
-                  : null,
-                borderRadius: BorderRadius.circular(20),
-                child: _buildLoanCard(amount, status, term, method, createdAt),
+            if (snapshot.hasError) {
+              return Center(
+                child: Text(
+                  'Error al cargar préstamos: ${snapshot.error}',
+                  style: const TextStyle(color: Colors.red),
+                ),
               );
-            },
-          );
-        },
+            }
+
+            final allLoans = snapshot.data ?? [];
+
+            // Filtrar según especificaciones
+            final currentLoans = allLoans.where((l) {
+              final s = l['status'];
+              return s != 'rejected' && s != 'paid';
+            }).toList();
+
+            final historyLoans = allLoans.where((l) {
+              final s = l['status'];
+              return s == 'rejected' || s == 'paid';
+            }).toList();
+
+            return TabBarView(
+              children: [
+                _buildLoanList(currentLoans, 'No tienes préstamos actuales activos'),
+                _buildLoanList(historyLoans, 'No tienes historial de préstamos'),
+              ],
+            );
+          },
+        ),
       ),
+    );
+  }
+
+  Widget _buildLoanList(List<Map<String, dynamic>> loans, String emptyMessage) {
+    if (loans.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.account_balance_wallet_outlined, size: 80, color: Colors.white.withOpacity(0.2)),
+            const SizedBox(height: 16),
+            Text(
+              emptyMessage,
+              style: const TextStyle(color: Colors.white70, fontSize: 16),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: loans.length,
+      itemBuilder: (context, index) {
+        final loan = loans[index];
+        final amount = loan['amount'] ?? 0;
+        final status = loan['status'] ?? 'pending';
+        final term = loan['payment_term']?.toString() ?? '0';
+        final method = loan['payment_method'] ?? 'N/A';
+        final createdAt = loan['created_at'] != null 
+            ? DateTime.parse(loan['created_at']) 
+            : DateTime.now();
+
+        return InkWell(
+          onTap: status == 'accepted' || status == 'overdue'
+              ? () => Navigator.pushNamed(context, '/loan-details', arguments: loan)
+              : null,
+          child: _buildLoanCard(amount, status, term, method, createdAt),
+        );
+      },
     );
   }
 
@@ -182,16 +201,7 @@ class _PrestamosScreenState extends State<PrestamosScreen> {
                 formattedDate,
                 style: const TextStyle(color: Colors.white38, fontSize: 12),
               ),
-              if (status == 'accepted')
-                const Row(
-                  children: [
-                    Text('Ver detalles', style: TextStyle(color: AppColors.primary, fontSize: 12)),
-                    SizedBox(width: 4),
-                    Icon(Icons.arrow_forward_ios, color: AppColors.primary, size: 12),
-                  ],
-                )
-              else
-                const Icon(Icons.arrow_forward_ios, color: Colors.white24, size: 12),
+              const Icon(Icons.arrow_forward_ios, color: Colors.white24, size: 12),
             ],
           ),
         ],
