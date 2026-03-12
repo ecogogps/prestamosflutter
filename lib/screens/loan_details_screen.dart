@@ -73,7 +73,11 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: _buildBody(),
+      // 🛡️ SOLUCIÓN: Envolver el body en SafeArea para evitar topes con botones nativos
+      body: SafeArea(
+        bottom: true, // Asegura específicamente la parte inferior
+        child: _buildBody(),
+      ),
     );
   }
 
@@ -265,7 +269,7 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
           Align(
             alignment: Alignment.bottomRight,
             child: Padding(
-              padding: const EdgeInsets.only(right: 20, bottom: 40),
+              padding: const EdgeInsets.only(right: 20, bottom: 20), // Margen inferior ajustado
               child: SizedBox(
                 width: 160,
                 height: 54,
