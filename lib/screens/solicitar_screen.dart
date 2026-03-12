@@ -41,24 +41,8 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
 
   // Seccion 1 - Perfil
   String _gender = 'Masculino';
-  String? _selectedBank;
   final _dobMask = MaskTextInputFormatter(
       mask: '##/##/####', filter: {"#": RegExp(r'[0-9]')});
-
-  final List<String> _mexicoBanks = [
-    'MERCADO LIBRE',
-    'BBVA',
-    'AZTECA',
-    'SANTANDER',
-    'BANORTE',
-    'HSBC',
-    'SCOTIABANK',
-    'BANCO DEL BIENESTAR',
-    'BANCOPPEL',
-    'NU MEXICO',
-    'STP',
-    'BANAMEX'
-  ];
 
   // Seccion 2 - Inicial
   String _housingType = 'Propia';
@@ -103,6 +87,26 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
     'Zacatecas': ['Zacatecas', 'Guadalupe', 'Fresnillo', 'Jerez', 'Río Grande']
   };
 
+  // Bancos México
+  final List<String> _mexicoBanks = [
+    'BBVA México',
+    'Banamex (Citibanamex)',
+    'Santander México',
+    'Banorte',
+    'HSBC México',
+    'Banco Azteca',
+    'Scotiabank México',
+    'Inbursa',
+    'Banjercito',
+    'BanCoppel',
+    'Mercado Pago (MERCADO LIBRE)',
+    'Nu México (Nubank)',
+    'Albo',
+    'Klar',
+    'Stori',
+    'Hey Banco'
+  ];
+
   // Seccion 3 - Relaciones
   String _ref1Relation = 'Padre/Madre';
   String _ref2Relation = 'Hermano/a';
@@ -110,11 +114,13 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
   // Seccion 4 - Files
   File? _facePhoto;
   File? _idFront;
+  File? _idBack;
 
   // Seccion 5 - Prestamo
   double _amount = 5000;
-  int _paymentTerm = 7;
-  String _paymentMethod = 'Semanal';
+  final int _paymentTerm = 7;
+  final String _paymentMethod = 'Semanal';
+  String? _selectedBank;
 
   Future<void> _pickContact(int refNum) async {
     if (await Permission.contacts.request().isGranted) {
@@ -136,7 +142,6 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
     }
   }
 
-  // Foto de Rostro
   Future<void> _pickFaceImage() async {
     if (await Permission.camera.request().isGranted) {
       final imagePath = await Navigator.push<String?>(
@@ -157,8 +162,7 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
     }
   }
 
-  // Foto de Cédula
-  Future<void> _pickIdImage() async {
+  Future<void> _pickIdImage({required bool isFront}) async {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.background,
@@ -169,10 +173,10 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
         return SafeArea(
           child: Wrap(
             children: [
-              const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text('Seleccione origen de la imagen',
-                    style: TextStyle(
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(isFront ? 'Identificación Frontal *' : 'Identificación Trasera *',
+                    style: const TextStyle(
                         color: AppColors.text,
                         fontSize: 18,
                         fontWeight: FontWeight.bold)),
@@ -186,7 +190,13 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
                   final pickedFile = await ImagePicker()
                       .pickImage(source: ImageSource.gallery);
                   if (pickedFile != null) {
-                    setState(() => _idFront = File(pickedFile.path));
+                    setState(() {
+                      if (isFront) {
+                        _idFront = File(pickedFile.path);
+                      } else {
+                        _idBack = File(pickedFile.path);
+                      }
+                    });
                   }
                 },
               ),
@@ -208,7 +218,13 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
                     );
 
                     if (imagePath != null) {
-                      setState(() => _idFront = File(imagePath));
+                      setState(() {
+                        if (isFront) {
+                          _idFront = File(imagePath);
+                        } else {
+                          _idBack = File(imagePath);
+                        }
+                      });
                     }
                   } else {
                     _showError('Se requiere permiso de cámara');
@@ -242,19 +258,25 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
   Future<void> _submitRequest() async {
     if (_isLoading) return;
 
-    if (_facePhoto == null || _idFront == null) {
-      _showError('Debe adjuntar las fotos requeridas');
-      return;
-    }
-
-    if (_selectedBank == null) {
-      _showError('Por favor seleccione su banco');
-      return;
-    }
-
-    if (_ref1NameController.text.isEmpty || _ref1PhoneController.text.isEmpty ||
-        _ref2NameController.text.isEmpty || _ref2PhoneController.text.isEmpty) {
-      _showError('Por favor complete los datos de las referencias');
+    // Validación de campos obligatorios
+    if (_firstNameController.text.isEmpty || 
+        _lastNameController.text.isEmpty || 
+        _dobController.text.isEmpty || 
+        _docNumberController.text.isEmpty || 
+        _accountNumberController.text.isEmpty || 
+        _emailController.text.isEmpty || 
+        _addressController.text.isEmpty ||
+        _selectedProvince == null ||
+        _selectedCity == null ||
+        _selectedBank == null ||
+        _ref1NameController.text.isEmpty || 
+        _ref1PhoneController.text.isEmpty || 
+        _ref2NameController.text.isEmpty || 
+        _ref2PhoneController.text.isEmpty ||
+        _facePhoto == null || 
+        _idFront == null ||
+        _idBack == null) {
+      _showError('Todos los campos marcados con * son obligatorios');
       return;
     }
 
@@ -262,19 +284,20 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
 
     try {
       final faceUrl = await _uploadFile(_facePhoto!, 'faces');
-      final idUrl = await _uploadFile(_idFront!, 'ids');
+      final idFrontUrl = await _uploadFile(_idFront!, 'ids_front');
+      final idBackUrl = await _uploadFile(_idBack!, 'ids_back');
 
       await supabase.from('loans').insert({
         'user_id': supabase.auth.currentUser!.id,
         'amount': _amount,
         'payment_term': _paymentTerm,
         'payment_method': _paymentMethod,
+        'bank_name': _selectedBank,
         'first_name': _firstNameController.text,
         'last_name': _lastNameController.text,
         'gender': _gender,
         'dob': _dobController.text,
         'doc_number': _docNumberController.text,
-        'bank_name': _selectedBank,
         'account_number': _accountNumberController.text,
         'email': _emailController.text,
         'address': _addressController.text,
@@ -290,7 +313,8 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
         'ref2_name': _ref2NameController.text,
         'ref2_phone': _ref2PhoneController.text,
         'face_photo_url': faceUrl,
-        'id_front_url': idUrl,
+        'id_front_url': idFrontUrl,
+        'id_back_url': idBackUrl,
         'status': 'pending',
       });
 
@@ -396,7 +420,8 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
 
   Widget _buildTextField(TextEditingController controller, String label,
       {TextInputType? keyboardType,
-      List<TextInputFormatter>? inputFormatters}) {
+      List<TextInputFormatter>? inputFormatters,
+      bool onlyDigits = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Column(
@@ -410,8 +435,7 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
             keyboardType: keyboardType,
             style: const TextStyle(color: AppColors.text),
             inputFormatters: [
-              if (keyboardType == TextInputType.number || keyboardType == TextInputType.phone)
-                FilteringTextInputFormatter.digitsOnly,
+              if (onlyDigits) FilteringTextInputFormatter.digitsOnly,
               ...?inputFormatters,
             ],
             decoration: InputDecoration(
@@ -484,30 +508,31 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
     );
   }
 
+  // --- STEP WIDGETS ---
+
   Widget _buildStepProfile() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildTextField(_firstNameController, 'Nombres'),
-        _buildTextField(_lastNameController, 'Apellidos'),
-        _buildSelectableRow('Género', _gender, () {
+        _buildTextField(_firstNameController, 'Nombres *'),
+        _buildTextField(_lastNameController, 'Apellidos *'),
+        _buildSelectableRow('Género *', _gender, () {
           _showSelectionSheet('Género', ['Masculino', 'Femenino'],
               (val) => setState(() => _gender = val));
         }),
-        _buildTextField(_dobController, 'Fecha Nacimiento (DD/MM/AAAA)',
+        _buildTextField(_dobController, 'Fecha Nacimiento (DD/MM/AAAA) *',
             inputFormatters: [_dobMask],
             keyboardType: TextInputType.datetime),
-        _buildTextField(_docNumberController, 'Número Documento',
-            keyboardType: TextInputType.text),
-        _buildSelectableRow('Banco', _selectedBank, () {
-          _showSelectionSheet('Seleccione su Banco', _mexicoBanks,
+        _buildTextField(_docNumberController, 'Número Documento *'), // Alfanumérico
+        _buildSelectableRow('Banco *', _selectedBank, () {
+          _showSelectionSheet('Seleccionar Banco', _mexicoBanks,
               (val) => setState(() => _selectedBank = val));
         }),
-        _buildTextField(_accountNumberController, 'Número de Cuenta',
-            keyboardType: TextInputType.number),
-        _buildTextField(_emailController, 'Correo Electrónico',
+        _buildTextField(_accountNumberController, 'Número de Cuenta *',
+            onlyDigits: true, keyboardType: TextInputType.number),
+        _buildTextField(_emailController, 'Correo Electrónico *',
             keyboardType: TextInputType.emailAddress),
-        _buildTextField(_addressController, 'Dirección Domicilio'),
+        _buildTextField(_addressController, 'Dirección Domicilio *'),
       ],
     );
   }
@@ -516,11 +541,11 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSelectableRow('Tipo de Vivienda', _housingType, () {
+        _buildSelectableRow('Tipo de Vivienda *', _housingType, () {
           _showSelectionSheet('Tipo de Vivienda', ['Propia', 'Renta', 'Otros'],
               (val) => setState(() => _housingType = val));
         }),
-        _buildSelectableRow('Estado', _selectedProvince, () {
+        _buildSelectableRow('Estado *', _selectedProvince, () {
           _showSelectionSheet('Estado', _mexicoData.keys.toList(), (val) {
             setState(() {
               _selectedProvince = val;
@@ -528,7 +553,7 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
             });
           });
         }),
-        _buildSelectableRow('Ciudad', _selectedCity, () {
+        _buildSelectableRow('Ciudad *', _selectedCity, () {
           if (_selectedProvince == null) {
             _showError('Por favor seleccione un estado primero');
             return;
@@ -536,12 +561,12 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
           _showSelectionSheet('Ciudad', _mexicoData[_selectedProvince]!,
               (val) => setState(() => _selectedCity = val));
         }),
-        _buildSelectableRow('Estado civil', _maritalStatus, () {
+        _buildSelectableRow('Estado civil *', _maritalStatus, () {
           _showSelectionSheet('Estado civil',
               ['Soltero/a', 'Casado/a', 'Divorciado/a', 'Viudo/a'],
               (val) => setState(() => _maritalStatus = val));
         }),
-        _buildSelectableRow('Máximo nivel estudios', _educationLevel, () {
+        _buildSelectableRow('Máximo nivel estudios *', _educationLevel, () {
           _showSelectionSheet(
               'Nivel estudios',
               ['Primaria', 'Secundaria', 'Preparatoria', 'Universidad', 'Postgrado'],
@@ -555,9 +580,9 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Contacto 1', style: TextStyle(color: AppColors.primary, fontSize: 16, fontWeight: FontWeight.bold)),
+        const Text('Contacto 1 *', style: TextStyle(color: AppColors.primary, fontSize: 16, fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
-        _buildSelectableRow('Relación Contacto 1', _ref1Relation, () {
+        _buildSelectableRow('Relación Contacto 1 *', _ref1Relation, () {
           _showSelectionSheet(
               'Relación 1',
               ['Padre/Madre', 'Hermano/a', 'Compañero Trabajo', 'Amigo/a'],
@@ -573,14 +598,14 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
             )
           ],
         ),
-        _buildTextField(_ref1NameController, 'Nombre Completo (Contacto 1)'),
-        _buildTextField(_ref1PhoneController, 'Teléfono (Contacto 1)', keyboardType: TextInputType.phone),
+        _buildTextField(_ref1NameController, 'Nombre Completo (Contacto 1) *'),
+        _buildTextField(_ref1PhoneController, 'Teléfono (Contacto 1) *', onlyDigits: true, keyboardType: TextInputType.phone),
         
         const Divider(height: 40, color: Colors.white12),
 
-        const Text('Contacto 2', style: TextStyle(color: AppColors.primary, fontSize: 16, fontWeight: FontWeight.bold)),
+        const Text('Contacto 2 *', style: TextStyle(color: AppColors.primary, fontSize: 16, fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
-        _buildSelectableRow('Relación Contacto 2', _ref2Relation, () {
+        _buildSelectableRow('Relación Contacto 2 *', _ref2Relation, () {
           _showSelectionSheet(
               'Relación 2',
               ['Padre/Madre', 'Hermano/a', 'Compañero Trabajo', 'Amigo/a'],
@@ -596,8 +621,8 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
             )
           ],
         ),
-        _buildTextField(_ref2NameController, 'Nombre Completo (Contacto 2)'),
-        _buildTextField(_ref2PhoneController, 'Teléfono (Contacto 2)', keyboardType: TextInputType.phone),
+        _buildTextField(_ref2NameController, 'Nombre Completo (Contacto 2) *'),
+        _buildTextField(_ref2PhoneController, 'Teléfono (Contacto 2) *', onlyDigits: true, keyboardType: TextInputType.phone),
       ],
     );
   }
@@ -606,17 +631,24 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
     return Column(
       children: [
         _buildPhotoBox(
-            label: 'Tomar foto de rostro (Cámara Frontal)', 
+            label: 'Tomar foto de rostro (Cámara Frontal) *', 
             file: _facePhoto, 
             onTap: _pickFaceImage, 
             icon: Icons.face,
             aspectRatio: 1.0, 
         ),
         _buildPhotoBox(
-            label: 'Adjuntar frontal cédula (Trasera/Galería)', 
+            label: 'Adjuntar frontal identificación (Trasera/Galería) *', 
             file: _idFront, 
-            onTap: _pickIdImage, 
+            onTap: () => _pickIdImage(isFront: true), 
             icon: Icons.credit_card,
+            aspectRatio: 1.586, 
+        ),
+        _buildPhotoBox(
+            label: 'Adjuntar reverso identificación (Trasera/Galería) *', 
+            file: _idBack, 
+            onTap: () => _pickIdImage(isFront: false), 
+            icon: Icons.credit_card_outlined,
             aspectRatio: 1.586, 
         ),
       ],
@@ -627,7 +659,7 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('¿Cuánto dinero necesitas?',
+        const Text('¿Cuánto dinero necesitas? *',
             style: TextStyle(color: Colors.white, fontSize: 18)),
         const SizedBox(height: 20),
         Center(
@@ -649,16 +681,50 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
               setState(() => _amount = (val / 500).round() * 500.0),
         ),
         const SizedBox(height: 20),
-        _buildSelectableRow('Plazo de Pago (Días)', _paymentTerm.toString(), () {
-          _showSelectionSheet('Plazo de Pago', ['7', '15', '30'],
-              (val) => setState(() => _paymentTerm = int.parse(val)));
-        }),
-        _buildSelectableRow('Forma de Pago', _paymentMethod, () {
-          _showSelectionSheet(
-              'Forma de Pago',
-              ['Diario', 'Semanal', 'Quincenal', 'Mensual'],
-              (val) => setState(() => _paymentMethod = val));
-        }),
+        
+        // Campo Plazo fijo en 7 días
+        Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Plazo de Pago (Días) *', style: TextStyle(color: Colors.white60, fontSize: 13)),
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                ),
+                child: Text('$_paymentTerm días', style: const TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
+
+        // Forma de Pago fija en Semanal
+        Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Forma de Pago *', style: TextStyle(color: Colors.white60, fontSize: 13)),
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                ),
+                child: Text(_paymentMethod, style: const TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
