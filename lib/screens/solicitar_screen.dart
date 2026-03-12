@@ -87,26 +87,6 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
     'Zacatecas': ['Zacatecas', 'Guadalupe', 'Fresnillo', 'Jerez', 'Río Grande']
   };
 
-  // Bancos México
-  final List<String> _mexicoBanks = [
-    'BBVA México',
-    'Banamex (Citibanamex)',
-    'Santander México',
-    'Banorte',
-    'HSBC México',
-    'Banco Azteca',
-    'Scotiabank México',
-    'Inbursa',
-    'Banjercito',
-    'BanCoppel',
-    'Mercado Pago (MERCADO LIBRE)',
-    'Nu México (Nubank)',
-    'Albo',
-    'Klar',
-    'Stori',
-    'Hey Banco'
-  ];
-
   // Seccion 3 - Relaciones
   String _ref1Relation = 'Padre/Madre';
   String _ref2Relation = 'Hermano/a';
@@ -121,6 +101,22 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
   final int _paymentTerm = 7;
   final String _paymentMethod = 'Semanal';
   String? _selectedBank;
+
+  final List<String> _mexicoBanks = [
+    'BBVA México',
+    'Banco Azteca',
+    'Mercado Pago (STP)',
+    'Banamex (Citibanamex)',
+    'Banorte',
+    'Santander México',
+    'HSBC México',
+    'Scotiabank México',
+    'Inbursa',
+    'Bancoppel',
+    'Afirme',
+    'Nu México',
+    'Spin by OXXO'
+  ];
 
   Future<void> _pickContact(int refNum) async {
     if (await Permission.contacts.request().isGranted) {
@@ -175,7 +171,7 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: Text(isFront ? 'Identificación Frontal *' : 'Identificación Trasera *',
+                child: Text(isFront ? 'Parte Frontal de la Cédula *' : 'Parte Trasera de la Cédula *',
                     style: const TextStyle(
                         color: AppColors.text,
                         fontSize: 18,
@@ -255,28 +251,38 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
     }
   }
 
+  bool _validateCurrentStep() {
+    switch (_currentStep) {
+      case 0: // Perfil
+        return _firstNameController.text.isNotEmpty &&
+            _lastNameController.text.isNotEmpty &&
+            _dobController.text.length == 10 &&
+            _docNumberController.text.isNotEmpty &&
+            _selectedBank != null &&
+            _accountNumberController.text.isNotEmpty &&
+            _emailController.text.isNotEmpty &&
+            _addressController.text.isNotEmpty;
+      case 1: // Datos Iniciales
+        return _selectedProvince != null && _selectedCity != null;
+      case 2: // Referencias
+        return _ref1NameController.text.isNotEmpty &&
+            _ref1PhoneController.text.isNotEmpty &&
+            _ref2NameController.text.isNotEmpty &&
+            _ref2PhoneController.text.isNotEmpty;
+      case 3: // Archivos
+        return _facePhoto != null && _idFront != null && _idBack != null;
+      case 4: // Préstamo
+        return true;
+      default:
+        return false;
+    }
+  }
+
   Future<void> _submitRequest() async {
     if (_isLoading) return;
 
-    // Validación de campos obligatorios
-    if (_firstNameController.text.isEmpty || 
-        _lastNameController.text.isEmpty || 
-        _dobController.text.isEmpty || 
-        _docNumberController.text.isEmpty || 
-        _accountNumberController.text.isEmpty || 
-        _emailController.text.isEmpty || 
-        _addressController.text.isEmpty ||
-        _selectedProvince == null ||
-        _selectedCity == null ||
-        _selectedBank == null ||
-        _ref1NameController.text.isEmpty || 
-        _ref1PhoneController.text.isEmpty || 
-        _ref2NameController.text.isEmpty || 
-        _ref2PhoneController.text.isEmpty ||
-        _facePhoto == null || 
-        _idFront == null ||
-        _idBack == null) {
-      _showError('Todos los campos marcados con * son obligatorios');
+    if (!_validateCurrentStep()) {
+      _showError('Por favor complete todos los campos obligatorios *');
       return;
     }
 
@@ -284,8 +290,8 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
 
     try {
       final faceUrl = await _uploadFile(_facePhoto!, 'faces');
-      final idFrontUrl = await _uploadFile(_idFront!, 'ids_front');
-      final idBackUrl = await _uploadFile(_idBack!, 'ids_back');
+      final idFrontUrl = await _uploadFile(_idFront!, 'ids');
+      final idBackUrl = await _uploadFile(_idBack!, 'ids');
 
       await supabase.from('loans').insert({
         'user_id': supabase.auth.currentUser!.id,
@@ -329,7 +335,10 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
   }
 
   void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg),
+      backgroundColor: Colors.redAccent,
+    ));
   }
 
   void _showSelectionSheet(
@@ -420,8 +429,7 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
 
   Widget _buildTextField(TextEditingController controller, String label,
       {TextInputType? keyboardType,
-      List<TextInputFormatter>? inputFormatters,
-      bool onlyDigits = false}) {
+      List<TextInputFormatter>? inputFormatters}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Column(
@@ -435,7 +443,8 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
             keyboardType: keyboardType,
             style: const TextStyle(color: AppColors.text),
             inputFormatters: [
-              if (onlyDigits) FilteringTextInputFormatter.digitsOnly,
+              if (keyboardType == TextInputType.number || keyboardType == TextInputType.phone)
+                FilteringTextInputFormatter.digitsOnly,
               ...?inputFormatters,
             ],
             decoration: InputDecoration(
@@ -508,8 +517,6 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
     );
   }
 
-  // --- STEP WIDGETS ---
-
   Widget _buildStepProfile() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -523,13 +530,14 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
         _buildTextField(_dobController, 'Fecha Nacimiento (DD/MM/AAAA) *',
             inputFormatters: [_dobMask],
             keyboardType: TextInputType.datetime),
-        _buildTextField(_docNumberController, 'Número Documento *'), // Alfanumérico
+        _buildTextField(_docNumberController, 'Número Documento *',
+            keyboardType: TextInputType.text),
         _buildSelectableRow('Banco *', _selectedBank, () {
-          _showSelectionSheet('Seleccionar Banco', _mexicoBanks,
+          _showSelectionSheet('Seleccionar Banco', _mexicoBanks, 
               (val) => setState(() => _selectedBank = val));
         }),
         _buildTextField(_accountNumberController, 'Número de Cuenta *',
-            onlyDigits: true, keyboardType: TextInputType.number),
+            keyboardType: TextInputType.number),
         _buildTextField(_emailController, 'Correo Electrónico *',
             keyboardType: TextInputType.emailAddress),
         _buildTextField(_addressController, 'Dirección Domicilio *'),
@@ -599,7 +607,7 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
           ],
         ),
         _buildTextField(_ref1NameController, 'Nombre Completo (Contacto 1) *'),
-        _buildTextField(_ref1PhoneController, 'Teléfono (Contacto 1) *', onlyDigits: true, keyboardType: TextInputType.phone),
+        _buildTextField(_ref1PhoneController, 'Teléfono (Contacto 1) *', keyboardType: TextInputType.phone),
         
         const Divider(height: 40, color: Colors.white12),
 
@@ -622,7 +630,7 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
           ],
         ),
         _buildTextField(_ref2NameController, 'Nombre Completo (Contacto 2) *'),
-        _buildTextField(_ref2PhoneController, 'Teléfono (Contacto 2) *', onlyDigits: true, keyboardType: TextInputType.phone),
+        _buildTextField(_ref2PhoneController, 'Teléfono (Contacto 2) *', keyboardType: TextInputType.phone),
       ],
     );
   }
@@ -638,14 +646,14 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
             aspectRatio: 1.0, 
         ),
         _buildPhotoBox(
-            label: 'Adjuntar frontal identificación (Trasera/Galería) *', 
+            label: 'Adjuntar frontal cédula *', 
             file: _idFront, 
             onTap: () => _pickIdImage(isFront: true), 
             icon: Icons.credit_card,
             aspectRatio: 1.586, 
         ),
         _buildPhotoBox(
-            label: 'Adjuntar reverso identificación (Trasera/Galería) *', 
+            label: 'Adjuntar trasera cédula *', 
             file: _idBack, 
             onTap: () => _pickIdImage(isFront: false), 
             icon: Icons.credit_card_outlined,
@@ -681,50 +689,8 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
               setState(() => _amount = (val / 500).round() * 500.0),
         ),
         const SizedBox(height: 20),
-        
-        // Campo Plazo fijo en 7 días
-        Padding(
-          padding: const EdgeInsets.only(bottom: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Plazo de Pago (Días) *', style: TextStyle(color: Colors.white60, fontSize: 13)),
-              const SizedBox(height: 8),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
-                ),
-                child: Text('$_paymentTerm días', style: const TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-        ),
-
-        // Forma de Pago fija en Semanal
-        Padding(
-          padding: const EdgeInsets.only(bottom: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Forma de Pago *', style: TextStyle(color: Colors.white60, fontSize: 13)),
-              const SizedBox(height: 8),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
-                ),
-                child: Text(_paymentMethod, style: const TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-        ),
+        _buildSelectableRow('Plazo de Pago (Días) *', '$_paymentTerm días', () {}),
+        _buildSelectableRow('Forma de Pago *', _paymentMethod, () {}),
       ],
     );
   }
@@ -810,10 +776,14 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
                               ),
                             ),
                             onPressed: () {
-                              if (isLastStep) {
-                                _submitRequest();
+                              if (_validateCurrentStep()) {
+                                if (isLastStep) {
+                                  _submitRequest();
+                                } else {
+                                  setState(() => _currentStep += 1);
+                                }
                               } else {
-                                setState(() => _currentStep += 1);
+                                _showError('Por favor complete todos los campos obligatorios *');
                               }
                             },
                             child: Text(
