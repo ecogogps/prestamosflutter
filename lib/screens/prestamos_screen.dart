@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
@@ -12,113 +11,117 @@ class PrestamosScreen extends StatefulWidget {
   State<PrestamosScreen> createState() => _PrestamosScreenState();
 }
 
-class _PrestamosScreenState extends State<PrestamosScreen> {
+class _PrestamosScreenState extends State<PrestamosScreen> with SingleTickerProviderStateMixin {
   final supabase = Supabase.instance.client;
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final userId = supabase.auth.currentUser?.id;
 
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: AppBar(
-          title: const Text('Mis Préstamos', style: TextStyle(fontWeight: FontWeight.bold)),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          centerTitle: true,
-          bottom: const TabBar(
-            indicatorColor: AppColors.primary,
-            labelColor: AppColors.primary,
-            unselectedLabelColor: Colors.white54,
-            indicatorWeight: 3,
-            tabs: [
-              Tab(text: 'Préstamo Actual'),
-              Tab(text: 'Préstamo Histórico'),
-            ],
-          ),
-        ),
-        body: TabBarView(
-          children: [
-            // Tab 1: Préstamo Actual (Todos menos rechazados y pagados)
-            _buildLoanList(
-              userId,
-              ['pending', 'accepted', 'overdue'],
-              'No tienes préstamos activos',
-            ),
-            // Tab 2: Préstamo Histórico (Rechazados y Pagados)
-            _buildLoanList(
-              userId,
-              ['rejected', 'paid'],
-              'No tienes préstamos en tu historial',
-            ),
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Mis Préstamos', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: AppColors.primary,
+          labelColor: AppColors.primary,
+          unselectedLabelColor: Colors.white38,
+          tabs: const [
+            Tab(text: 'Préstamo Actual'),
+            Tab(text: 'Préstamo Histórico'),
           ],
         ),
+      ),
+      body: StreamBuilder<List<Map<String, dynamic>>>(
+        // Obtenemos todos los préstamos del usuario en un solo stream
+        stream: supabase
+            .from('loans')
+            .stream(primaryKey: ['id'])
+            .eq('user_id', userId ?? '')
+            .order('created_at', ascending: false),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                'Error al cargar préstamos: ${snapshot.error}',
+                style: const TextStyle(color: Colors.red),
+              ),
+            );
+          }
+
+          final allLoans = snapshot.data ?? [];
+
+          return TabBarView(
+            controller: _tabController,
+            children: [
+              // Tab 1: Préstamo Actual (Pendiente, Aceptado, Vencido)
+              _buildLoanList(
+                allLoans.where((l) => ['pending', 'accepted', 'overdue'].contains(l['status'])).toList(),
+                'No tienes préstamos activos',
+              ),
+              // Tab 2: Préstamo Histórico (Rechazado, Pagado)
+              _buildLoanList(
+                allLoans.where((l) => ['rejected', 'paid'].contains(l['status'])).toList(),
+                'Tu historial está vacío',
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildLoanList(String? userId, List<String> statuses, String emptyMsg) {
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: supabase
-          .from('loans')
-          .stream(primaryKey: ['id'])
-          .eq('user_id', userId ?? '')
-          .inFilter('status', statuses)
-          .order('created_at', ascending: false),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: AppColors.primary));
-        }
+  Widget _buildLoanList(List<Map<String, dynamic>> loans, String emptyMsg) {
+    if (loans.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.account_balance_wallet_outlined, size: 60, color: Colors.white.withOpacity(0.1)),
+            const SizedBox(height: 16),
+            Text(emptyMsg, style: const TextStyle(color: Colors.white38)),
+          ],
+        ),
+      );
+    }
 
-        if (snapshot.hasError) {
-          return Center(
-            child: Text(
-              'Error al cargar préstamos: ${snapshot.error}',
-              style: const TextStyle(color: Colors.red),
-            ),
-          );
-        }
-
-        final loans = snapshot.data ?? [];
-
-        if (loans.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.account_balance_wallet_outlined, size: 60, color: Colors.white12),
-                const SizedBox(height: 16),
-                Text(
-                  emptyMsg,
-                  style: const TextStyle(color: Colors.white38, fontSize: 16),
-                ),
-              ],
-            ),
-          );
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: loans.length,
-          itemBuilder: (context, index) {
-            final loan = loans[index];
-            return _buildLoanCard(context, loan);
-          },
-        );
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: loans.length,
+      itemBuilder: (context, index) {
+        final loan = loans[index];
+        return _buildLoanCard(loan);
       },
     );
   }
 
-  Widget _buildLoanCard(BuildContext context, Map<String, dynamic> loan) {
+  Widget _buildLoanCard(Map<String, dynamic> loan) {
     final status = loan['status'] ?? 'pending';
     final amount = loan['amount'] ?? 0;
-    final term = loan['payment_term']?.toString() ?? '0';
-    final method = loan['payment_method'] ?? 'N/A';
-    final createdAt = loan['created_at'] != null 
-        ? DateTime.parse(loan['created_at']) 
-        : DateTime.now();
+    final term = loan['payment_term']?.toString() ?? '7';
+    final method = loan['payment_method'] ?? 'Semanal';
+    final createdAt = loan['created_at'] != null ? DateTime.parse(loan['created_at']) : DateTime.now();
 
     Color statusColor;
     String statusText;
@@ -146,83 +149,68 @@ class _PrestamosScreenState extends State<PrestamosScreen> {
     }
 
     final formattedDate = DateFormat('dd/MM/yyyy').format(createdAt);
-    final bool canViewDetails = status == 'accepted' || status == 'overdue';
 
-    return GestureDetector(
-      onTap: canViewDetails ? () => context.push('/loan-details', extra: loan) : null,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withOpacity(0.1)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '\$${NumberFormat("#,##0", "es_MX").format(amount)} MXN',
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '\$${NumberFormat("#,##0", "es_MX").format(amount)} MXN',
+                style: const TextStyle(color: AppColors.primary, fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: statusColor.withOpacity(0.5)),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: statusColor.withOpacity(0.5)),
-                  ),
-                  child: Text(
-                    statusText,
-                    style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
-                  ),
+                child: Text(
+                  statusText,
+                  style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                _buildDetailItem(Icons.calendar_today, 'Plazo', '$term días'),
-                const SizedBox(width: 24),
-                _buildDetailItem(Icons.payments, 'Pago', method),
-              ],
-            ),
-            const Divider(color: Colors.white10, height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  formattedDate,
-                  style: const TextStyle(color: Colors.white38, fontSize: 12),
-                ),
-                if (canViewDetails)
-                  Row(
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              _buildDetailItem(Icons.calendar_today, 'Plazo', '$term días'),
+              const SizedBox(width: 24),
+              _buildDetailItem(Icons.payments, 'Pago', method),
+            ],
+          ),
+          const Divider(color: Colors.white10, height: 32),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(formattedDate, style: const TextStyle(color: Colors.white38, fontSize: 12)),
+              if (status == 'accepted' || status == 'overdue')
+                TextButton(
+                  onPressed: () => context.push('/loan-details', extra: loan),
+                  child: Row(
                     children: const [
-                      Text(
-                        'Ver detalles',
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      Text('Ver detalles', style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.bold)),
                       SizedBox(width: 4),
                       Icon(Icons.arrow_forward_ios, color: AppColors.primary, size: 10),
                     ],
-                  )
-                else
-                  const Icon(Icons.arrow_forward_ios, color: Colors.white24, size: 12),
-              ],
-            ),
-          ],
-        ),
+                  ),
+                )
+              else
+                const Icon(Icons.arrow_forward_ios, color: Colors.white24, size: 12),
+            ],
+          ),
+        ],
       ),
     );
   }
