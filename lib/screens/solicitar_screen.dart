@@ -31,6 +31,7 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
   final _docNumberController = TextEditingController();
   final _accountNumberController = TextEditingController();
   final _emailController = TextEditingController();
+  final _phoneController = TextEditingController(); // Nuevo: Celular
   final _addressController = TextEditingController();
 
   // Controllers Seccion 3 (Referencias editables)
@@ -41,6 +42,7 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
 
   // Seccion 1 - Perfil
   String _gender = 'Masculino';
+  String _selectedBank = 'BBVA'; // Predeterminado
   final _dobMask = MaskTextInputFormatter(
       mask: '##/##/####', filter: {"#": RegExp(r'[0-9]')});
 
@@ -51,7 +53,7 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
   String _maritalStatus = 'Soltero/a';
   String _educationLevel = 'Secundaria';
 
-  // Base de datos de los 32 Estados de México y principales ciudades
+  // Base de datos de México
   final Map<String, List<String>> _mexicoData = {
     'Aguascalientes': ['Aguascalientes', 'Asientos', 'Calvillo', 'Jesús María', 'Rincón de Romos'],
     'Baja California': ['Ensenada', 'Mexicali', 'Playas de Rosarito', 'Tecate', 'Tijuana'],
@@ -94,29 +96,19 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
   // Seccion 4 - Files
   File? _facePhoto;
   File? _idFront;
-  File? _idBack;
+  File? _idBack; // Nuevo: Parte trasera
 
   // Seccion 5 - Prestamo
   double _amount = 5000;
-  final int _paymentTerm = 7;
-  final String _paymentMethod = 'Semanal';
-  String? _selectedBank;
+  final int _paymentTerm = 7; // Fijo
+  final String _paymentMethod = 'Semanal'; // Fijo
 
-  final List<String> _mexicoBanks = [
-    'BBVA México',
-    'Banco Azteca',
-    'Mercado Pago (STP)',
-    'Banamex (Citibanamex)',
-    'Banorte',
-    'Santander México',
-    'HSBC México',
-    'Scotiabank México',
-    'Inbursa',
-    'Bancoppel',
-    'Afirme',
-    'Nu México',
-    'Spin by OXXO'
-  ];
+  @override
+  void initState() {
+    super.initState();
+    // Autocompletar celular del usuario autenticado
+    _phoneController.text = supabase.auth.currentUser?.phone ?? '';
+  }
 
   Future<void> _pickContact(int refNum) async {
     if (await Permission.contacts.request().isGranted) {
@@ -158,7 +150,7 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
     }
   }
 
-  Future<void> _pickIdImage({required bool isFront}) async {
+  Future<void> _pickIdImage(bool isFront) async {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.background,
@@ -171,7 +163,7 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: Text(isFront ? 'Parte Frontal de la Cédula *' : 'Parte Trasera de la Cédula *',
+                child: Text(isFront ? 'Parte Frontal' : 'Parte Trasera',
                     style: const TextStyle(
                         color: AppColors.text,
                         fontSize: 18,
@@ -187,18 +179,15 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
                       .pickImage(source: ImageSource.gallery);
                   if (pickedFile != null) {
                     setState(() {
-                      if (isFront) {
-                        _idFront = File(pickedFile.path);
-                      } else {
-                        _idBack = File(pickedFile.path);
-                      }
+                      if (isFront) _idFront = File(pickedFile.path);
+                      else _idBack = File(pickedFile.path);
                     });
                   }
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.camera_alt, color: AppColors.primary),
-                title: const Text('Tomar con Cámara Trasera',
+                title: const Text('Tomar con Cámara',
                     style: TextStyle(color: AppColors.text)),
                 onTap: () async {
                   Navigator.pop(ctx);
@@ -215,11 +204,8 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
 
                     if (imagePath != null) {
                       setState(() {
-                        if (isFront) {
-                          _idFront = File(imagePath);
-                        } else {
-                          _idBack = File(imagePath);
-                        }
+                        if (isFront) _idFront = File(imagePath);
+                        else _idBack = File(imagePath);
                       });
                     }
                   } else {
@@ -239,8 +225,7 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
     try {
       final userId = supabase.auth.currentUser!.id;
       final fileExt = file.path.split('.').last;
-      final fileName =
-          '${userId}_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
+      final fileName = '${userId}_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
       final path = '$folder/$fileName';
 
       await supabase.storage.from('loan-files').upload(path, file);
@@ -251,27 +236,28 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
     }
   }
 
-  bool _validateCurrentStep() {
+  // VALIDACIÓN POR PASO
+  bool _validateStep() {
     switch (_currentStep) {
       case 0: // Perfil
         return _firstNameController.text.isNotEmpty &&
-            _lastNameController.text.isNotEmpty &&
-            _dobController.text.length == 10 &&
-            _docNumberController.text.isNotEmpty &&
-            _selectedBank != null &&
-            _accountNumberController.text.isNotEmpty &&
-            _emailController.text.isNotEmpty &&
-            _addressController.text.isNotEmpty;
+               _lastNameController.text.isNotEmpty &&
+               _dobController.text.isNotEmpty &&
+               _docNumberController.text.isNotEmpty &&
+               _accountNumberController.text.isNotEmpty &&
+               _emailController.text.isNotEmpty &&
+               _phoneController.text.isNotEmpty &&
+               _addressController.text.isNotEmpty;
       case 1: // Datos Iniciales
         return _selectedProvince != null && _selectedCity != null;
       case 2: // Referencias
         return _ref1NameController.text.isNotEmpty &&
-            _ref1PhoneController.text.isNotEmpty &&
-            _ref2NameController.text.isNotEmpty &&
-            _ref2PhoneController.text.isNotEmpty;
+               _ref1PhoneController.text.isNotEmpty &&
+               _ref2NameController.text.isNotEmpty &&
+               _ref2PhoneController.text.isNotEmpty;
       case 3: // Archivos
         return _facePhoto != null && _idFront != null && _idBack != null;
-      case 4: // Préstamo
+      case 4: // Prestamo
         return true;
       default:
         return false;
@@ -281,8 +267,8 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
   Future<void> _submitRequest() async {
     if (_isLoading) return;
 
-    if (!_validateCurrentStep()) {
-      _showError('Por favor complete todos los campos obligatorios *');
+    if (!_validateStep()) {
+      _showError('Por favor complete todos los campos obligatorios (*)');
       return;
     }
 
@@ -290,22 +276,23 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
 
     try {
       final faceUrl = await _uploadFile(_facePhoto!, 'faces');
-      final idFrontUrl = await _uploadFile(_idFront!, 'ids');
-      final idBackUrl = await _uploadFile(_idBack!, 'ids');
+      final idUrl = await _uploadFile(_idFront!, 'ids');
+      final idBackUrl = await _uploadFile(_idBack!, 'ids_back');
 
       await supabase.from('loans').insert({
         'user_id': supabase.auth.currentUser!.id,
         'amount': _amount,
         'payment_term': _paymentTerm,
         'payment_method': _paymentMethod,
-        'bank_name': _selectedBank,
         'first_name': _firstNameController.text,
         'last_name': _lastNameController.text,
         'gender': _gender,
         'dob': _dobController.text,
         'doc_number': _docNumberController.text,
+        'bank_name': _selectedBank,
         'account_number': _accountNumberController.text,
         'email': _emailController.text,
+        'phone': _phoneController.text, // Nuevo campo en BD
         'address': _addressController.text,
         'housing_type': _housingType,
         'province': _selectedProvince,
@@ -319,14 +306,12 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
         'ref2_name': _ref2NameController.text,
         'ref2_phone': _ref2PhoneController.text,
         'face_photo_url': faceUrl,
-        'id_front_url': idFrontUrl,
+        'id_front_url': idUrl,
         'id_back_url': idBackUrl,
         'status': 'pending',
       });
 
-      if (mounted) {
-        context.go('/prestamos');
-      }
+      if (mounted) context.go('/prestamos');
     } catch (e) {
       _showError('Error al enviar la solicitud: $e');
     } finally {
@@ -335,36 +320,24 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
   }
 
   void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-      backgroundColor: Colors.redAccent,
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  void _showSelectionSheet(
-      String title, List<String> items, Function(String) onSelect) {
+  void _showSelectionSheet(String title, List<String> items, Function(String) onSelect) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true, 
       backgroundColor: AppColors.background,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => SafeArea(
         child: Container(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.7,
-          ),
+          constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: Text(title,
-                    style: const TextStyle(
-                        color: AppColors.text,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold)),
+                child: Text(title, style: const TextStyle(color: AppColors.text, fontSize: 18, fontWeight: FontWeight.bold)),
               ),
               Flexible(
                 child: ListView.builder(
@@ -389,34 +362,24 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
     );
   }
 
-  Widget _buildSelectableRow(
-      String label, String? value, VoidCallback onTap) {
+  Widget _buildSelectableRow(String label, String? value, VoidCallback onTap) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label,
-              style: const TextStyle(color: Colors.white60, fontSize: 13)),
+          Text('$label *', style: const TextStyle(color: Colors.white60, fontSize: 13)),
           const SizedBox(height: 8),
           InkWell(
             onTap: onTap,
             borderRadius: BorderRadius.circular(12),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(12),
-              ),
+              decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(
-                    child: Text(value ?? 'Seleccionar',
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            color: AppColors.text, fontSize: 16)),
-                  ),
+                  Expanded(child: Text(value ?? 'Seleccionar', overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.text, fontSize: 16))),
                   const Icon(Icons.chevron_right, color: Colors.white70),
                 ],
               ),
@@ -427,37 +390,30 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label,
-      {TextInputType? keyboardType,
-      List<TextInputFormatter>? inputFormatters}) {
+  Widget _buildTextField(TextEditingController controller, String label, {TextInputType? keyboardType, List<TextInputFormatter>? inputFormatters, bool enabled = true}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label,
-              style: const TextStyle(color: Colors.white60, fontSize: 13)),
+          Text('$label *', style: TextStyle(color: enabled ? Colors.white60 : Colors.white30, fontSize: 13)),
           const SizedBox(height: 8),
           TextField(
             controller: controller,
             keyboardType: keyboardType,
-            style: const TextStyle(color: AppColors.text),
+            enabled: enabled,
+            style: TextStyle(color: enabled ? AppColors.text : Colors.white30),
             inputFormatters: [
               if (keyboardType == TextInputType.number || keyboardType == TextInputType.phone)
                 FilteringTextInputFormatter.digitsOnly,
               ...?inputFormatters,
             ],
             decoration: InputDecoration(
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               filled: true,
-              fillColor: Colors.white.withOpacity(0.05),
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none),
-              focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.primary)),
+              fillColor: enabled ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.02),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary)),
             ),
           ),
         ],
@@ -465,20 +421,13 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
     );
   }
 
-  Widget _buildPhotoBox({
-    required String label,
-    required File? file,
-    required VoidCallback onTap,
-    required IconData icon,
-    required double aspectRatio, 
-  }) {
+  Widget _buildPhotoBox({required String label, required File? file, required VoidCallback onTap, required IconData icon, required double aspectRatio}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label,
-              style: const TextStyle(color: Colors.white60, fontSize: 13)),
+          Text('$label *', style: const TextStyle(color: Colors.white60, fontSize: 13)),
           const SizedBox(height: 8),
           InkWell(
             onTap: onTap,
@@ -488,16 +437,12 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                    color: file != null ? AppColors.primary : Colors.white12),
+                border: Border.all(color: file != null ? AppColors.primary : Colors.white12),
               ),
               child: file != null
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: AspectRatio(
-                        aspectRatio: aspectRatio,
-                        child: Image.file(file, fit: BoxFit.cover),
-                      ),
+                      child: AspectRatio(aspectRatio: aspectRatio, child: Image.file(file, fit: BoxFit.cover)),
                     )
                   : Padding(
                       padding: const EdgeInsets.all(32),
@@ -505,8 +450,7 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
                         children: [
                           Icon(icon, size: 48, color: Colors.white30),
                           const SizedBox(height: 12),
-                          const Text('Toca para capturar',
-                              style: TextStyle(color: AppColors.text)),
+                          const Text('Toca para capturar', style: TextStyle(color: AppColors.text)),
                         ],
                       ),
                     ),
@@ -521,26 +465,20 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildTextField(_firstNameController, 'Nombres *'),
-        _buildTextField(_lastNameController, 'Apellidos *'),
-        _buildSelectableRow('Género *', _gender, () {
-          _showSelectionSheet('Género', ['Masculino', 'Femenino'],
-              (val) => setState(() => _gender = val));
+        _buildTextField(_firstNameController, 'Nombres'),
+        _buildTextField(_lastNameController, 'Apellidos'),
+        _buildSelectableRow('Género', _gender, () {
+          _showSelectionSheet('Género', ['Masculino', 'Femenino'], (val) => setState(() => _gender = val));
         }),
-        _buildTextField(_dobController, 'Fecha Nacimiento (DD/MM/AAAA) *',
-            inputFormatters: [_dobMask],
-            keyboardType: TextInputType.datetime),
-        _buildTextField(_docNumberController, 'Número Documento *',
-            keyboardType: TextInputType.text),
-        _buildSelectableRow('Banco *', _selectedBank, () {
-          _showSelectionSheet('Seleccionar Banco', _mexicoBanks, 
-              (val) => setState(() => _selectedBank = val));
+        _buildTextField(_dobController, 'Fecha Nacimiento (DD/MM/AAAA)', inputFormatters: [_dobMask], keyboardType: TextInputType.datetime),
+        _buildTextField(_docNumberController, 'Número Documento', keyboardType: TextInputType.text),
+        _buildSelectableRow('Banco', _selectedBank, () {
+          _showSelectionSheet('Seleccionar Banco', ['BBVA', 'MERCADO LIBRE', 'AZTECA', 'SANTANDER', 'BANAMEX', 'HSBC', 'BANORTE', 'SCOTIABANK', 'INBURSA', 'BANCO DEL BIENESTAR'], (val) => setState(() => _selectedBank = val));
         }),
-        _buildTextField(_accountNumberController, 'Número de Cuenta *',
-            keyboardType: TextInputType.number),
-        _buildTextField(_emailController, 'Correo Electrónico *',
-            keyboardType: TextInputType.emailAddress),
-        _buildTextField(_addressController, 'Dirección Domicilio *'),
+        _buildTextField(_accountNumberController, 'Número de Cuenta', keyboardType: TextInputType.number),
+        _buildTextField(_emailController, 'Correo Electrónico', keyboardType: TextInputType.emailAddress),
+        _buildTextField(_phoneController, 'Celular', enabled: false), // Nuevo y no editable
+        _buildTextField(_addressController, 'Dirección Domicilio'),
       ],
     );
   }
@@ -549,36 +487,23 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSelectableRow('Tipo de Vivienda *', _housingType, () {
-          _showSelectionSheet('Tipo de Vivienda', ['Propia', 'Renta', 'Otros'],
-              (val) => setState(() => _housingType = val));
+        _buildSelectableRow('Tipo de Vivienda', _housingType, () {
+          _showSelectionSheet('Tipo de Vivienda', ['Propia', 'Renta', 'Otros'], (val) => setState(() => _housingType = val));
         }),
-        _buildSelectableRow('Estado *', _selectedProvince, () {
+        _buildSelectableRow('Estado', _selectedProvince, () {
           _showSelectionSheet('Estado', _mexicoData.keys.toList(), (val) {
-            setState(() {
-              _selectedProvince = val;
-              _selectedCity = null; 
-            });
+            setState(() { _selectedProvince = val; _selectedCity = null; });
           });
         }),
-        _buildSelectableRow('Ciudad *', _selectedCity, () {
-          if (_selectedProvince == null) {
-            _showError('Por favor seleccione un estado primero');
-            return;
-          }
-          _showSelectionSheet('Ciudad', _mexicoData[_selectedProvince]!,
-              (val) => setState(() => _selectedCity = val));
+        _buildSelectableRow('Ciudad', _selectedCity, () {
+          if (_selectedProvince == null) { _showError('Por favor seleccione un estado primero'); return; }
+          _showSelectionSheet('Ciudad', _mexicoData[_selectedProvince]!, (val) => setState(() => _selectedCity = val));
         }),
-        _buildSelectableRow('Estado civil *', _maritalStatus, () {
-          _showSelectionSheet('Estado civil',
-              ['Soltero/a', 'Casado/a', 'Divorciado/a', 'Viudo/a'],
-              (val) => setState(() => _maritalStatus = val));
+        _buildSelectableRow('Estado civil', _maritalStatus, () {
+          _showSelectionSheet('Estado civil', ['Soltero/a', 'Casado/a', 'Divorciado/a', 'Viudo/a'], (val) => setState(() => _maritalStatus = val));
         }),
-        _buildSelectableRow('Máximo nivel estudios *', _educationLevel, () {
-          _showSelectionSheet(
-              'Nivel estudios',
-              ['Primaria', 'Secundaria', 'Preparatoria', 'Universidad', 'Postgrado'],
-              (val) => setState(() => _educationLevel = val));
+        _buildSelectableRow('Máximo nivel estudios', _educationLevel, () {
+          _showSelectionSheet('Nivel estudios', ['Primaria', 'Secundaria', 'Preparatoria', 'Universidad', 'Postgrado'], (val) => setState(() => _educationLevel = val));
         }),
       ],
     );
@@ -590,47 +515,25 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
       children: [
         const Text('Contacto 1 *', style: TextStyle(color: AppColors.primary, fontSize: 16, fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
-        _buildSelectableRow('Relación Contacto 1 *', _ref1Relation, () {
-          _showSelectionSheet(
-              'Relación 1',
-              ['Padre/Madre', 'Hermano/a', 'Compañero Trabajo', 'Amigo/a'],
-              (val) => setState(() => _ref1Relation = val));
+        _buildSelectableRow('Relación Contacto 1', _ref1Relation, () {
+          _showSelectionSheet('Relación 1', ['Padre/Madre', 'Hermano/a', 'Compañero Trabajo', 'Amigo/a'], (val) => setState(() => _ref1Relation = val));
         }),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            TextButton.icon(
-              icon: const Icon(Icons.contact_phone, color: AppColors.primary),
-              label: const Text('Importar de agenda', style: TextStyle(color: AppColors.primary)),
-              onPressed: () => _pickContact(1),
-            )
-          ],
-        ),
-        _buildTextField(_ref1NameController, 'Nombre Completo (Contacto 1) *'),
-        _buildTextField(_ref1PhoneController, 'Teléfono (Contacto 1) *', keyboardType: TextInputType.phone),
-        
+        Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+          TextButton.icon(icon: const Icon(Icons.contact_phone, color: AppColors.primary), label: const Text('Importar de agenda', style: TextStyle(color: AppColors.primary)), onPressed: () => _pickContact(1))
+        ]),
+        _buildTextField(_ref1NameController, 'Nombre Completo (Contacto 1)'),
+        _buildTextField(_ref1PhoneController, 'Teléfono (Contacto 1)', keyboardType: TextInputType.phone),
         const Divider(height: 40, color: Colors.white12),
-
         const Text('Contacto 2 *', style: TextStyle(color: AppColors.primary, fontSize: 16, fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
-        _buildSelectableRow('Relación Contacto 2 *', _ref2Relation, () {
-          _showSelectionSheet(
-              'Relación 2',
-              ['Padre/Madre', 'Hermano/a', 'Compañero Trabajo', 'Amigo/a'],
-              (val) => setState(() => _ref2Relation = val));
+        _buildSelectableRow('Relación Contacto 2', _ref2Relation, () {
+          _showSelectionSheet('Relación 2', ['Padre/Madre', 'Hermano/a', 'Compañero Trabajo', 'Amigo/a'], (val) => setState(() => _ref2Relation = val));
         }),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            TextButton.icon(
-              icon: const Icon(Icons.contact_phone, color: AppColors.primary),
-              label: const Text('Importar de agenda', style: TextStyle(color: AppColors.primary)),
-              onPressed: () => _pickContact(2),
-            )
-          ],
-        ),
-        _buildTextField(_ref2NameController, 'Nombre Completo (Contacto 2) *'),
-        _buildTextField(_ref2PhoneController, 'Teléfono (Contacto 2) *', keyboardType: TextInputType.phone),
+        Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+          TextButton.icon(icon: const Icon(Icons.contact_phone, color: AppColors.primary), label: const Text('Importar de agenda', style: TextStyle(color: AppColors.primary)), onPressed: () => _pickContact(2))
+        ]),
+        _buildTextField(_ref2NameController, 'Nombre Completo (Contacto 2)'),
+        _buildTextField(_ref2PhoneController, 'Teléfono (Contacto 2)', keyboardType: TextInputType.phone),
       ],
     );
   }
@@ -638,27 +541,9 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
   Widget _buildStepFiles() {
     return Column(
       children: [
-        _buildPhotoBox(
-            label: 'Tomar foto de rostro (Cámara Frontal) *', 
-            file: _facePhoto, 
-            onTap: _pickFaceImage, 
-            icon: Icons.face,
-            aspectRatio: 1.0, 
-        ),
-        _buildPhotoBox(
-            label: 'Adjuntar frontal cédula *', 
-            file: _idFront, 
-            onTap: () => _pickIdImage(isFront: true), 
-            icon: Icons.credit_card,
-            aspectRatio: 1.586, 
-        ),
-        _buildPhotoBox(
-            label: 'Adjuntar trasera cédula *', 
-            file: _idBack, 
-            onTap: () => _pickIdImage(isFront: false), 
-            icon: Icons.credit_card_outlined,
-            aspectRatio: 1.586, 
-        ),
+        _buildPhotoBox(label: 'Foto de rostro', file: _facePhoto, onTap: _pickFaceImage, icon: Icons.face, aspectRatio: 1.0),
+        _buildPhotoBox(label: 'Identificación Frontal', file: _idFront, onTap: () => _pickIdImage(true), icon: Icons.credit_card, aspectRatio: 1.586),
+        _buildPhotoBox(label: 'Identificación Trasera', file: _idBack, onTap: () => _pickIdImage(false), icon: Icons.credit_card, aspectRatio: 1.586),
       ],
     );
   }
@@ -667,153 +552,48 @@ class _SolicitarScreenState extends State<SolicitarScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('¿Cuánto dinero necesitas? *',
-            style: TextStyle(color: Colors.white, fontSize: 18)),
+        const Text('¿Cuánto dinero necesitas? *', style: TextStyle(color: Colors.white, fontSize: 18)),
         const SizedBox(height: 20),
-        Center(
-          child: Text('\$${_amount.toInt()} MXN',
-              style: const TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold)),
-        ),
-        Slider(
-          value: _amount,
-          min: 500,
-          max: 50500,
-          divisions: 100,
-          activeColor: AppColors.primary,
-          inactiveColor: Colors.white24,
-          label: '\$${_amount.toInt()}',
-          onChanged: (val) =>
-              setState(() => _amount = (val / 500).round() * 500.0),
-        ),
+        Center(child: Text('\$${_amount.toInt()} MXN', style: const TextStyle(color: AppColors.primary, fontSize: 32, fontWeight: FontWeight.bold))),
+        Slider(value: _amount, min: 500, max: 50500, divisions: 100, activeColor: AppColors.primary, inactiveColor: Colors.white24, label: '\$${_amount.toInt()}', onChanged: (val) => setState(() => _amount = (val / 500).round() * 500.0)),
         const SizedBox(height: 20),
-        _buildSelectableRow('Plazo de Pago (Días) *', '$_paymentTerm días', () {}),
-        _buildSelectableRow('Forma de Pago *', _paymentMethod, () {}),
+        _buildSelectableRow('Plazo de Pago (Días)', '$_paymentTerm', () {}), // No modificable visualmente
+        _buildSelectableRow('Forma de Pago', _paymentMethod, () {}), // No modificable visualmente
       ],
     );
-  }
-
-  Widget _getCurrentStepWidget() {
-    switch (_currentStep) {
-      case 0: return _buildStepProfile();
-      case 1: return _buildStepInitial();
-      case 2: return _buildStepReferences();
-      case 3: return _buildStepFiles();
-      case 4: return _buildStepLoan();
-      default: return const SizedBox.shrink();
-    }
-  }
-
-  String _getStepTitle() {
-    switch (_currentStep) {
-      case 0: return 'Perfil';
-      case 1: return 'Datos Iniciales';
-      case 2: return 'Referencias';
-      case 3: return 'Archivos';
-      case 4: return 'Préstamo';
-      default: return '';
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     final isLastStep = _currentStep == 4;
-
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(_getStepTitle()),
+        title: Text(_currentStep == 0 ? 'Perfil' : _currentStep == 1 ? 'Datos Iniciales' : _currentStep == 2 ? 'Referencias' : _currentStep == 3 ? 'Archivos' : 'Préstamo'),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            if (_currentStep > 0) {
-              setState(() => _currentStep -= 1);
-            } else {
-              context.pop(); 
-            }
-          },
-        ),
+        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (_currentStep > 0) setState(() => _currentStep -= 1); else context.pop(); }),
       ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.primary))
-          : Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Column(
-                children: [
-                  LinearProgressIndicator(
-                    value: (_currentStep + 1) / 5,
-                    backgroundColor: Colors.white12,
-                    color: AppColors.primary,
-                    minHeight: 4,
-                  ),
-                  const SizedBox(height: 16),
-
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.only(top: 8.0, bottom: 24.0),
-                      child: _getCurrentStepWidget(),
-                    ),
-                  ),
-                  
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 24.0, top: 8.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          width: double.infinity,
-                          height: 54,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                            onPressed: () {
-                              if (_validateCurrentStep()) {
-                                if (isLastStep) {
-                                  _submitRequest();
-                                } else {
-                                  setState(() => _currentStep += 1);
-                                }
-                              } else {
-                                _showError('Por favor complete todos los campos obligatorios *');
-                              }
-                            },
-                            child: Text(
-                              isLastStep ? 'Enviar' : 'Próximo paso',
-                              style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Icon(Icons.security, size: 14, color: Colors.white70),
-                            SizedBox(width: 6),
-                            Text(
-                              'La plataforma protege la seguridad de sus datos',
-                              style:
-                                  TextStyle(color: Colors.white70, fontSize: 12),
-                            ),
-                          ],
-                        )
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+      body: _isLoading ? const Center(child: CircularProgressIndicator(color: AppColors.primary)) : Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: Column(children: [
+          LinearProgressIndicator(value: (_currentStep + 1) / 5, backgroundColor: Colors.white12, color: AppColors.primary, minHeight: 4),
+          const SizedBox(height: 16),
+          Expanded(child: SingleChildScrollView(padding: const EdgeInsets.only(top: 8.0, bottom: 24.0), child: _currentStep == 0 ? _buildStepProfile() : _currentStep == 1 ? _buildStepInitial() : _currentStep == 2 ? _buildStepReferences() : _currentStep == 3 ? _buildStepFiles() : _buildStepLoan())),
+          Padding(padding: const EdgeInsets.only(bottom: 24.0, top: 8.0), child: Column(mainAxisSize: MainAxisSize.min, children: [
+            SizedBox(width: double.infinity, height: 54, child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))), onPressed: () {
+              if (_validateStep()) {
+                if (isLastStep) _submitRequest();
+                else setState(() => _currentStep += 1);
+              } else {
+                _showError('Complete los campos obligatorios (*) para continuar');
+              }
+            }, child: Text(isLastStep ? 'Enviar' : 'Próximo paso', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)))),
+            const SizedBox(height: 16),
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: const [Icon(Icons.security, size: 14, color: Colors.white70), SizedBox(width: 6), Text('Plataforma segura y datos protegidos', style: TextStyle(color: Colors.white70, fontSize: 12))])
+          ]))
+        ]),
+      ),
     );
   }
 }
