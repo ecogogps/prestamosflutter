@@ -241,7 +241,7 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
                     '\$${currencyFormat.format(d['total_interest'])}'),
                 if (lateInterest > 0)
                   _buildDetailRow(
-                    'Mora ($delayDays días · 5%/día)',
+                    'Mora ($delayDays días)',
                     '+\$${currencyFormat.format(lateInterest)}',
                     isNegative: true,
                   ),
